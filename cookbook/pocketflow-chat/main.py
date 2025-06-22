@@ -47,6 +47,9 @@ class ChatNode(Node):
 chat_node = ChatNode()
 chat_node - "continue" >> chat_node  # Loop back to continue conversation
 
+# 这是一个语法糖, 用于描述状态机或流程图中节点之间的有向连接。
+# 如果某个 Node 的 post() 返回了 'continue'，就继续跳转回当前这个 chat_node 节点
+
 flow = Flow(start=chat_node)
 
 # Start the chat

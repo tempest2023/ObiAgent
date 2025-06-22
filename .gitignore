@@ -26,6 +26,9 @@ yarn-error.log
 .env.test.local
 .env.production.local
 
+.env_activate.sh
+.env_deactivate.sh
+
 # Python
 __pycache__/
 *.py[cod]
