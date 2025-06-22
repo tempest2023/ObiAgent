@@ -18,11 +18,12 @@ def setup_env():
     with open(activate_script, 'w') as f:
         f.write('#!/bin/bash\n\n')
         f.write('# Save original environment variable\n')
-        f.write('export POCKETFLOW_OLD_ENV="$OPENAI_API_KEY"\n\n')
+        f.write('export POCKETFLOW_OLD_ENV="$OPENAI_API_KEY"\n')
+        f.write('export POCKETFLOW_OLD_GEMINI_ENV="$GEMINI_API_KEY"\n\n')
         
         # Write environment variables
         for key, value in os.environ.items():
-            if key.startswith(('OPENAI_', 'POCKETFLOW_')):
+            if key.startswith(('OPENAI_', 'POCKETFLOW_')) or key == 'GEMINI_API_KEY':
                 f.write(f'export {key}="{value}"\n')
     
     # Create deactivation script
@@ -31,7 +32,9 @@ def setup_env():
         f.write('#!/bin/bash\n\n')
         f.write('# Restore original environment variable\n')
         f.write('export OPENAI_API_KEY="$POCKETFLOW_OLD_ENV"\n')
+        f.write('export GEMINI_API_KEY="$POCKETFLOW_OLD_GEMINI_ENV"\n')
         f.write('unset POCKETFLOW_OLD_ENV\n')
+        f.write('unset POCKETFLOW_OLD_GEMINI_ENV\n')
     
     # Set script permissions
     os.chmod(activate_script, 0o755)

@@ -15,6 +15,8 @@ Thumbs.db
 *.swo
 *~
 
+uv.lock
+
 # Node
 node_modules/
 npm-debug.log
