@@ -396,7 +396,27 @@ class WorkflowExecutorNode(AsyncNode):
         
         # Analyze costs
         cheapest = min(flights, key=lambda x: x["price"])
-        best_value = min(flights, key=lambda x: x["price"] / (x["duration"].split()[0] if "h" in x["duration"] else 1))
+        
+        # Calculate best value by price per hour, handling duration parsing safely
+        def calculate_price_per_hour(flight):
+            try:
+                duration_str = flight["duration"]
+                # Extract hours from duration string like "11h 45m" -> 11.75
+                if "h" in duration_str:
+                    parts = duration_str.split()
+                    hours = float(parts[0].replace("h", ""))
+                    if len(parts) > 1 and "m" in parts[1]:
+                        minutes = float(parts[1].replace("m", ""))
+                        hours += minutes / 60
+                    return flight["price"] / hours
+                else:
+                    # If no hours found, use price as is
+                    return flight["price"]
+            except (ValueError, KeyError, IndexError) as e:
+                logger.warning(f"⚠️ WorkflowExecutorNode._cost_analysis: Error parsing duration for flight {flight.get('flight_number', 'unknown')}: {e}")
+                return flight["price"]  # Fallback to just price
+        
+        best_value = min(flights, key=calculate_price_per_hour)
         
         analysis = {
             "cheapest": cheapest,
@@ -523,11 +543,26 @@ Would you like me to proceed with booking this flight?
         
         # Save successful workflow to store
         workflow_design = prep_res["workflow_design"]
+        
+        # Safely extract workflow components with fallbacks
+        workflow = workflow_design.get("workflow", {})
+        nodes = workflow.get("nodes", [])
+        connections = workflow.get("connections", [])
+        shared_store_schema = workflow.get("shared_store_schema", {})
+        
+        # If shared_store_schema is not available, create a basic one
+        if not shared_store_schema:
+            logger.warning("⚠️ WorkflowExecutorNode: No shared_store_schema found, creating basic schema")
+            shared_store_schema = {
+                "user_message": "User's original question",
+                "workflow_results": "Results from workflow execution"
+            }
+        
         workflow_store.save_workflow(
             question=shared.get("user_message", ""),
-            nodes=workflow_design["workflow"]["nodes"],
-            connections=workflow_design["workflow"]["connections"],
-            shared_store_schema=workflow_design["workflow"]["shared_store_schema"],
+            nodes=nodes,
+            connections=connections,
+            shared_store_schema=shared_store_schema,
             success=True,
             tags=["flight_booking", "cost_analysis"]
         )
