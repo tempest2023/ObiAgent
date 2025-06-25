@@ -1,0 +1,161 @@
+{
+  "metadata": {
+    "id": "0437e5d0f905",
+    "name": "Workflow for: Help book a flight ticket from Los Angeles to Shan...",
+    "description": "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.",
+    "question_pattern": "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.",
+    "nodes_used": [
+      "flight_search",
+      "cost_analysis",
+      "preference_matcher",
+      "result_summarizer",
+      "user_query",
+      "flight_booking"
+    ],
+    "success_rate": 1.0,
+    "created_at": "2025-06-24T23:22:31.692054",
+    "last_used": "2025-06-24T23:50:56.725629",
+    "usage_count": 5,
+    "tags": [
+      "flight_booking",
+      "cost_analysis"
+    ]
+  },
+  "nodes": [
+    {
+      "name": "flight_search",
+      "description": "Search for flight options and prices from LAX to PVG with a preference for afternoon departure.",
+      "inputs": [
+        {
+          "origin": "LAX"
+        },
+        {
+          "destination": "PVG"
+        },
+        {
+          "date": "User's selected travel date"
+        },
+        {
+          "preferences": "afternoon departure"
+        }
+      ],
+      "outputs": [
+        "flight_options"
+      ],
+      "requires_permission": false
+    },
+    {
+      "name": "cost_analysis",
+      "description": "Analyze the flight options to find the best cost performance.",
+      "inputs": [
+        {
+          "options": "flight_options"
+        },
+        {
+          "criteria": "cost_performance"
+        }
+      ],
+      "outputs": [
+        "analysis_result"
+      ],
+      "requires_permission": false
+    },
+    {
+      "name": "preference_matcher",
+      "description": "Match the analyzed flight options with user preferences.",
+      "inputs": [
+        {
+          "options": "analysis_result"
+        },
+        {
+          "preferences": "afternoon departure"
+        }
+      ],
+      "outputs": [
+        "matched_options"
+      ],
+      "requires_permission": false
+    },
+    {
+      "name": "result_summarizer",
+      "description": "Summarize the matched flight options and provide recommendations.",
+      "inputs": [
+        {
+          "results": "matched_options"
+        },
+        {
+          "user_question": "Help book a flight ticket from Los Angeles to Shanghai"
+        }
+      ],
+      "outputs": [
+        "summary"
+      ],
+      "requires_permission": false
+    },
+    {
+      "name": "user_query",
+      "description": "Ask user for additional information like travel date or budget.",
+      "inputs": [
+        {
+          "question": "What is your preferred travel date?"
+        }
+      ],
+      "outputs": [
+        "user_response"
+      ],
+      "requires_permission": false
+    },
+    {
+      "name": "flight_booking",
+      "description": "Book the selected flight after user confirms.",
+      "inputs": [
+        {
+          "flight_option": "selected_flight"
+        },
+        {
+          "passenger_info": "user_details"
+        },
+        {
+          "payment_info": "payment_method"
+        }
+      ],
+      "outputs": [
+        "booking_confirmation"
+      ],
+      "requires_permission": true
+    }
+  ],
+  "connections": [
+    {
+      "from": "user_query",
+      "to": "flight_search",
+      "action": "gather travel date"
+    },
+    {
+      "from": "flight_search",
+      "to": "cost_analysis",
+      "action": "analyze flight options"
+    },
+    {
+      "from": "cost_analysis",
+      "to": "preference_matcher",
+      "action": "match options to preferences"
+    },
+    {
+      "from": "preference_matcher",
+      "to": "result_summarizer",
+      "action": "summarize results"
+    },
+    {
+      "from": "result_summarizer",
+      "to": "flight_booking",
+      "action": "book flight"
+    }
+  ],
+  "shared_store_schema": {
+    "travel_date": "The date of travel chosen by the user",
+    "selected_flight": "The flight option selected by the user",
+    "user_details": "Information about the passenger",
+    "payment_method": "User's payment information"
+  }
+}

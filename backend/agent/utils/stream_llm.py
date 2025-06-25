@@ -1,6 +1,5 @@
 import os
-from openai import AsyncOpenAI
-from google import genai
+from openai import AsyncOpenAI, OpenAI
 
 async def stream_llm(messages):
     client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", "your-api-key"))
@@ -17,10 +16,13 @@ async def stream_llm(messages):
             yield chunk.choices[0].delta.content
 
 def call_llm(prompt):    
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", "your-api-key"))
-    response = client.models.generate_content(
-    model="gemini-2.0-flash", contents=prompt)
-    return (response.text)
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "your-api-key"))
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7
+    )
+    return response.choices[0].message.content
 
 
 if __name__ == "__main__":
