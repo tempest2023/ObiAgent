@@ -18,12 +18,27 @@ from .utils.stream_llm import stream_llm, call_llm
 from .utils.node_registry import node_registry
 from .utils.workflow_store import workflow_store
 from .utils.permission_manager import permission_manager
+from agent.function_nodes.web_search import WebSearchNode
+from agent.function_nodes.analyze_results import AnalyzeResultsNode
+from agent.function_nodes.flight_search import FlightSearchNode
+from agent.function_nodes.cost_analysis import CostAnalysisNode
+from agent.function_nodes.result_summarizer import ResultSummarizerNode
+from agent.function_nodes.user_query import UserQueryNode
+from agent.function_nodes.permission_request import PermissionRequestNode
+from agent.function_nodes.data_formatter import DataFormatterNode
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 class WorkflowDesignerNode(AsyncNode):
-    """Node that analyzes user questions and designs workflows"""
+    """
+    Node that analyzes user questions and designs workflows.
+    Example:
+        >>> node = WorkflowDesignerNode()
+        >>> shared = {"user_message": "Book a flight from LA to Shanghai"}
+        >>> await node.prep_async(shared)
+        # Returns context for LLM to design a workflow
+    """
     
     async def prep_async(self, shared):
         logger.info("🔄 WorkflowDesignerNode: Starting prep_async")
@@ -197,8 +212,28 @@ IMPORTANT: Use only the available nodes listed above. If you need a node that do
         return "execute_workflow"
 
 class WorkflowExecutorNode(AsyncNode):
-    """Node that executes the designed workflow"""
+    """
+    Node that executes the designed workflow step by step.
+    Example:
+        >>> node = WorkflowExecutorNode()
+        >>> shared = {"workflow_design": <workflow_dict>}
+        >>> await node.prep_async(shared)
+        # Prepares execution context
+        >>> await node.exec_async(prep_res)
+        # Executes workflow nodes in order
+    """
     
+    node_class_map = {
+        "web_search": WebSearchNode,
+        "analyze_results": AnalyzeResultsNode,
+        "flight_search": FlightSearchNode,
+        "cost_analysis": CostAnalysisNode,
+        "result_summarizer": ResultSummarizerNode,
+        "user_query": UserQueryNode,
+        "permission_request": PermissionRequestNode,
+        "data_formatter": DataFormatterNode,
+    }
+
     async def prep_async(self, shared):
         logger.info("🔄 WorkflowExecutorNode: Starting prep_async")
         
@@ -232,31 +267,15 @@ class WorkflowExecutorNode(AsyncNode):
         workflow_design = prep_res["workflow_design"]
         websocket = prep_res["websocket"]
         shared = prep_res["shared"]
-        
-        # Execute each node in the workflow
         nodes = workflow_design["workflow"]["nodes"]
-        connections = workflow_design["workflow"]["connections"]
-        
+        execution_order = [node["name"] for node in nodes]
         logger.info(f"🚀 WorkflowExecutorNode: Starting execution of {len(nodes)} nodes")
-        
-        # Create a simple execution order (could be enhanced with proper graph traversal)
-        execution_order = []
-        for node in nodes:
-            execution_order.append(node["name"])
-        
         logger.info(f"📋 WorkflowExecutorNode: Execution order: {execution_order}")
-        
         results = {}
-        current_node = None
-        
         for i, node_name in enumerate(execution_order):
-            current_node = node_name
             node_config = next(n for n in nodes if n["name"] == node_name)
-            
             logger.info(f"⚡ WorkflowExecutorNode: Executing node {i+1}/{len(execution_order)}: {node_name}")
             logger.info(f"📝 WorkflowExecutorNode: Node description: {node_config.get('description', 'No description')}")
-            
-            # Send progress update
             if websocket:
                 try:
                     await websocket.send_text(json.dumps({
@@ -270,16 +289,19 @@ class WorkflowExecutorNode(AsyncNode):
                     logger.info(f"📤 WorkflowExecutorNode: Sent progress update for {node_name}")
                 except Exception as e:
                     logger.error(f"❌ WorkflowExecutorNode: Failed to send progress update: {e}")
-            
-            # Execute the node
             try:
-                logger.info(f"🔧 WorkflowExecutorNode: Calling _execute_node for {node_name}")
-                result = await self._execute_node(node_config, shared)
+                # Use real function node
+                node_cls = self.node_class_map.get(node_name)
+                if node_cls is None:
+                    logger.warning(f"⚠️ WorkflowExecutorNode: No implementation found for {node_name}, returning mock result")
+                    result = f"Mock result for {node_name}"
+                else:
+                    node = node_cls()
+                    prep_res_node = node.prep(shared)
+                    result = node.exec(prep_res_node)
+                    node.post(shared, prep_res_node, result)
                 results[node_name] = result
-                
                 logger.info(f"✅ WorkflowExecutorNode: Node {node_name} completed successfully")
-                
-                # Send node completion
                 if websocket:
                     try:
                         await websocket.send_text(json.dumps({
@@ -292,10 +314,8 @@ class WorkflowExecutorNode(AsyncNode):
                         logger.info(f"📤 WorkflowExecutorNode: Sent completion message for {node_name}")
                     except Exception as e:
                         logger.error(f"❌ WorkflowExecutorNode: Failed to send completion message: {e}")
-                
             except Exception as e:
                 logger.error(f"❌ WorkflowExecutorNode: Node {node_name} failed with error: {e}")
-                # Send error
                 if websocket:
                     try:
                         await websocket.send_text(json.dumps({
@@ -309,229 +329,9 @@ class WorkflowExecutorNode(AsyncNode):
                     except Exception as send_error:
                         logger.error(f"❌ WorkflowExecutorNode: Failed to send error message: {send_error}")
                 raise
-        
         logger.info(f"🎉 WorkflowExecutorNode: All {len(execution_order)} nodes completed successfully")
         logger.info("✅ WorkflowExecutorNode: exec_async completed")
         return results
-    
-    async def _execute_node(self, node_config: Dict[str, Any], shared: Dict[str, Any]):
-        """Execute a single node"""
-        node_name = node_config["name"]
-        logger.info(f"🔧 WorkflowExecutorNode._execute_node: Executing {node_name}")
-        
-        # Map node names to actual implementations
-        node_implementations = {
-            "web_search": self._web_search,
-            "flight_search": self._flight_search,
-            "cost_analysis": self._cost_analysis,
-            "user_query": self._user_query,
-            "permission_request": self._permission_request,
-            "result_summarizer": self._result_summarizer,
-            "data_formatter": self._data_formatter
-        }
-        
-        if node_name in node_implementations:
-            logger.info(f"🎯 WorkflowExecutorNode._execute_node: Found implementation for {node_name}")
-            result = await node_implementations[node_name](node_config, shared)
-            logger.info(f"✅ WorkflowExecutorNode._execute_node: {node_name} completed with result: {str(result)[:100]}...")
-            return result
-        else:
-            logger.warning(f"⚠️ WorkflowExecutorNode._execute_node: No implementation found for {node_name}, returning mock result")
-            return f"Mock result for {node_name}"
-    
-    async def _web_search(self, node_config: Dict[str, Any], shared: Dict[str, Any]):
-        """Perform web search"""
-        logger.info("🔍 WorkflowExecutorNode._web_search: Starting web search")
-        # Mock web search implementation
-        result = "Mock web search results for flight booking"
-        logger.info(f"✅ WorkflowExecutorNode._web_search: Completed with result: {result}")
-        return result
-    
-    async def _flight_search(self, node_config: Dict[str, Any], shared: Dict[str, Any]):
-        """Search for flights"""
-        logger.info("✈️ WorkflowExecutorNode._flight_search: Starting flight search")
-        
-        # Mock flight search results
-        flights = [
-            {
-                "airline": "United Airlines",
-                "flight_number": "UA857",
-                "departure": "14:30",
-                "arrival": "18:45",
-                "duration": "12h 15m",
-                "price": 850
-            },
-            {
-                "airline": "China Eastern",
-                "flight_number": "MU586",
-                "departure": "15:45",
-                "arrival": "19:30",
-                "duration": "11h 45m",
-                "price": 720
-            },
-            {
-                "airline": "Delta Airlines",
-                "flight_number": "DL287",
-                "departure": "16:20",
-                "arrival": "20:15",
-                "duration": "11h 55m",
-                "price": 920
-            }
-        ]
-        
-        logger.info(f"✅ WorkflowExecutorNode._flight_search: Found {len(flights)} flights")
-        return flights
-    
-    async def _cost_analysis(self, node_config: Dict[str, Any], shared: Dict[str, Any]):
-        """Analyze costs and provide recommendations"""
-        logger.info("💰 WorkflowExecutorNode._cost_analysis: Starting cost analysis")
-        
-        # Get flight results from previous nodes
-        workflow_results = shared.get("workflow_results", {})
-        flights = workflow_results.get("flight_search", [])
-        
-        if not flights:
-            logger.warning("⚠️ WorkflowExecutorNode._cost_analysis: No flight options to analyze")
-            return "No flight options to analyze"
-        
-        # Analyze costs
-        cheapest = min(flights, key=lambda x: x["price"])
-        
-        # Calculate best value by price per hour, handling duration parsing safely
-        def calculate_price_per_hour(flight):
-            try:
-                duration_str = flight["duration"]
-                # Extract hours from duration string like "11h 45m" -> 11.75
-                if "h" in duration_str:
-                    parts = duration_str.split()
-                    hours = float(parts[0].replace("h", ""))
-                    if len(parts) > 1 and "m" in parts[1]:
-                        minutes = float(parts[1].replace("m", ""))
-                        hours += minutes / 60
-                    return flight["price"] / hours
-                else:
-                    # If no hours found, use price as is
-                    return flight["price"]
-            except (ValueError, KeyError, IndexError) as e:
-                logger.warning(f"⚠️ WorkflowExecutorNode._cost_analysis: Error parsing duration for flight {flight.get('flight_number', 'unknown')}: {e}")
-                return flight["price"]  # Fallback to just price
-        
-        best_value = min(flights, key=calculate_price_per_hour)
-        
-        analysis = {
-            "cheapest": cheapest,
-            "best_value": best_value,
-            "recommendation": f"Best value: {best_value['airline']} {best_value['flight_number']} at ${best_value['price']}"
-        }
-        
-        logger.info(f"✅ WorkflowExecutorNode._cost_analysis: Analysis complete, recommendation: {analysis['recommendation']}")
-        return analysis
-    
-    async def _user_query(self, node_config: Dict[str, Any], shared: Dict[str, Any]):
-        """Ask user for additional information"""
-        logger.info("❓ WorkflowExecutorNode._user_query: Starting user query")
-        
-        # Handle inputs safely - it might be a list or dict
-        inputs = node_config.get("inputs", {})
-        if isinstance(inputs, dict):
-            question = inputs.get("question", "Please provide additional information")
-        else:
-            question = "Please provide additional information"
-        
-        logger.info(f"❓ WorkflowExecutorNode._user_query: Question: {question}")
-        
-        # Store the question for user response
-        shared["pending_user_question"] = question
-        
-        result = f"Waiting for user response to: {question}"
-        logger.info(f"✅ WorkflowExecutorNode._user_query: Completed, waiting for user response")
-        return result
-    
-    async def _permission_request(self, node_config: Dict[str, Any], shared: Dict[str, Any]):
-        """Request user permission for sensitive operations"""
-        logger.info("🔐 WorkflowExecutorNode._permission_request: Starting permission request")
-        
-        # Handle inputs safely - it might be a list or dict
-        inputs = node_config.get("inputs", {})
-        if isinstance(inputs, dict):
-            operation = inputs.get("operation", "unknown")
-            details = inputs.get("details", "No details provided")
-        else:
-            operation = "unknown"
-            details = "No details provided"
-        
-        logger.info(f"🔐 WorkflowExecutorNode._permission_request: Operation: {operation}, Details: {details}")
-        
-        # Create permission request
-        request = permission_manager.request_permission(
-            permission_type="payment" if "payment" in operation.lower() else "booking",
-            description=f"Permission for {operation}",
-            details={"operation": operation, "details": details}
-        )
-        
-        shared["pending_permission_request"] = request.id
-        
-        result = f"Permission request created: {request.id}"
-        logger.info(f"✅ WorkflowExecutorNode._permission_request: Created permission request {request.id}")
-        return result
-    
-    async def _result_summarizer(self, node_config: Dict[str, Any], shared: Dict[str, Any]):
-        """Summarize results and provide recommendations"""
-        logger.info("📊 WorkflowExecutorNode._result_summarizer: Starting result summarization")
-        
-        results = shared.get("workflow_results", {})
-        user_question = shared.get("user_message", "")
-        
-        logger.info(f"📊 WorkflowExecutorNode._result_summarizer: Summarizing results for: {user_question[:50]}...")
-        
-        summary = f"""
-Based on your request: "{user_question}"
-
-I found the following options:
-
-1. **China Eastern MU586** - $720
-   - Departure: 15:45 (afternoon as requested)
-   - Duration: 11h 45m
-   - Best value option
-
-2. **United Airlines UA857** - $850
-   - Departure: 14:30 (afternoon)
-   - Duration: 12h 15m
-
-3. **Delta Airlines DL287** - $920
-   - Departure: 16:20 (afternoon)
-   - Duration: 11h 55m
-
-**Recommendation**: China Eastern MU586 offers the best cost-performance ratio at $720 with an afternoon departure time as you requested.
-
-Would you like me to proceed with booking this flight?
-"""
-        
-        logger.info("✅ WorkflowExecutorNode._result_summarizer: Summary generated successfully")
-        return summary
-    
-    async def _data_formatter(self, node_config: Dict[str, Any], shared: Dict[str, Any]):
-        """Format data for better presentation"""
-        logger.info("📋 WorkflowExecutorNode._data_formatter: Starting data formatting")
-        
-        raw_data = shared.get("workflow_results", {})
-        
-        # Handle inputs safely - it might be a list or dict
-        inputs = node_config.get("inputs", {})
-        if isinstance(inputs, dict):
-            format_type = inputs.get("format_type", "text")
-        else:
-            format_type = "text"  # Default if inputs is not a dict
-        
-        logger.info(f"📋 WorkflowExecutorNode._data_formatter: Format type: {format_type}")
-        
-        if format_type == "comparison_table":
-            result = "Formatted comparison table would be displayed here"
-        else:
-            result = str(raw_data)
-        
-        logger.info(f"✅ WorkflowExecutorNode._data_formatter: Formatting complete, result length: {len(result)}")
-        return result
     
     async def post_async(self, shared, prep_res, exec_res):
         logger.info("🔄 WorkflowExecutorNode: Starting post_async")
@@ -572,7 +372,16 @@ Would you like me to proceed with booking this flight?
         return "workflow_complete"
 
 class UserInteractionNode(AsyncNode):
-    """Node that handles user interactions and responses"""
+    """
+    Node that handles user interactions and responses (questions, permissions).
+    Example:
+        >>> node = UserInteractionNode()
+        >>> shared = {"pending_user_question": "What is your budget?", "websocket": ws}
+        >>> await node.prep_async(shared)
+        # Prepares interaction context
+        >>> await node.exec_async(prep_res)
+        # Sends question to user via websocket
+    """
     
     async def prep_async(self, shared):
         logger.info("🔄 UserInteractionNode: Starting prep_async")
@@ -670,7 +479,16 @@ class UserInteractionNode(AsyncNode):
         return "continue_workflow"
 
 class WorkflowOptimizerNode(AsyncNode):
-    """Node that optimizes workflows based on results and user feedback"""
+    """
+    Node that optimizes workflows based on results and user feedback.
+    Example:
+        >>> node = WorkflowOptimizerNode()
+        >>> shared = {"workflow_results": {...}, "user_feedback": "Not good"}
+        >>> await node.prep_async(shared)
+        # Prepares optimization context
+        >>> await node.exec_async(prep_res)
+        # Suggests improvements if needed
+    """
     
     async def prep_async(self, shared):
         logger.info("🔄 WorkflowOptimizerNode: Starting prep_async")
@@ -797,7 +615,16 @@ revised_workflow:
 
 # Legacy node for backward compatibility
 class StreamingChatNode(AsyncNode):
-    """Legacy streaming chat node for backward compatibility"""
+    """
+    Legacy streaming chat node for backward compatibility (streams LLM output).
+    Example:
+        >>> node = StreamingChatNode()
+        >>> shared = {"user_message": "Hello", "websocket": ws}
+        >>> await node.prep_async(shared)
+        # Prepares chat context
+        >>> await node.exec_async(prep_res)
+        # Streams LLM response to websocket
+    """
     
     async def prep_async(self, shared):
         logger.info("🔄 StreamingChatNode: Starting prep_async")
@@ -857,7 +684,16 @@ class StreamingChatNode(AsyncNode):
         logger.info("✅ StreamingChatNode: post_async completed")
 
 class WorkflowEndNode(AsyncNode):
-    """Node that marks the end of a workflow"""
+    """
+    Node that marks the end of a workflow and notifies the user.
+    Example:
+        >>> node = WorkflowEndNode()
+        >>> shared = {"workflow_results": {...}, "websocket": ws}
+        >>> await node.prep_async(shared)
+        # Prepares completion context
+        >>> await node.exec_async(prep_res)
+        # Sends completion message to websocket
+    """
     
     async def prep_async(self, shared):
         logger.info("🔄 WorkflowEndNode: Starting prep_async")
