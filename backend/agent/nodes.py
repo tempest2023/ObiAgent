@@ -13,10 +13,10 @@ import json
 import yaml
 from typing import Dict, List, Any, Optional
 from pocketflow import AsyncNode, Node
-from utils.stream_llm import stream_llm, call_llm
-from utils.node_registry import node_registry
-from utils.workflow_store import workflow_store
-from utils.permission_manager import permission_manager
+from .utils.stream_llm import stream_llm, call_llm
+from .utils.node_registry import node_registry
+from .utils.workflow_store import workflow_store
+from .utils.permission_manager import permission_manager
 
 class WorkflowDesignerNode(AsyncNode):
     """Node that analyzes user questions and designs workflows"""

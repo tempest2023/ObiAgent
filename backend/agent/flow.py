@@ -1,5 +1,5 @@
 from pocketflow import AsyncFlow
-from nodes import (
+from .nodes import (
     WorkflowDesignerNode, 
     WorkflowExecutorNode, 
     UserInteractionNode, 
