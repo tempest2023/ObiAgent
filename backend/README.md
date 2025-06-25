@@ -287,6 +287,132 @@ backend/
 3. **Add New Utilities**: Extend the utils package
 4. **Add New Endpoints**: Extend the FastAPI server
 
+
+## Logging System
+
+The system includes a comprehensive logging system to track execution flow and debug issues.
+
+### Logging Levels
+
+- **DEBUG**: Detailed logging for development (includes function names and line numbers)
+- **INFO**: Standard logging for production (recommended for most use cases)
+- **WARNING**: Only warnings and errors
+- **ERROR**: Only error messages
+- **QUIET**: Only critical errors (for performance)
+
+### Usage
+
+```bash
+# Set logging level via environment variable
+export LOG_LEVEL=DEBUG
+python server.py
+
+# Or set it in code
+from logging_config import setup_logging
+setup_logging('DEBUG')
+
+# Test different logging levels
+python test_logging.py
+```
+
+### Logging Features
+
+- **Emoji-based Logging**: Easy to identify different types of operations
+- **Structured Messages**: Clear, consistent log format
+- **Node-specific Logging**: Each node logs its operations separately
+- **Flow Tracking**: Track the entire workflow execution process
+- **Error Handling**: Comprehensive error logging with context
+- **Performance Monitoring**: Track execution times and resource usage
+
+### Example Log Output
+
+```
+2024-01-15 10:30:15 - agent.nodes - INFO - 🔄 WorkflowDesignerNode: Starting prep_async
+2024-01-15 10:30:15 - agent.nodes - INFO - 📝 WorkflowDesignerNode: Processing question: Help book a flight ticket from Los Angeles...
+2024-01-15 10:30:15 - agent.nodes - INFO - 🔧 WorkflowDesignerNode: Found 11 available nodes
+2024-01-15 10:30:15 - agent.nodes - INFO - 🤖 WorkflowDesignerNode: Calling LLM to design workflow
+2024-01-15 10:30:18 - agent.nodes - INFO - ✅ WorkflowDesignerNode: Successfully parsed YAML response
+2024-01-15 10:30:18 - agent.nodes - INFO - 🎯 WorkflowDesignerNode: Designed workflow 'Flight Booking Workflow' with 6 steps
+```
+
+## Configuration
+
+### Environment Variables
+
+- `OPENAI_API_KEY`: Your OpenAI API key
+- `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR, QUIET)
+- `LOG_FILE`: Optional log file path
+
+### Logging Configuration
+
+The logging system can be configured in several ways:
+
+1. **Environment Variables**:
+   ```bash
+   export LOG_LEVEL=DEBUG
+   export LOG_FILE=logs/agent.log
+   ```
+
+2. **Code Configuration**:
+   ```python
+   from logging_config import setup_logging
+   
+   # Setup different logging levels
+   setup_logging('DEBUG')      # Detailed logging
+   setup_logging('INFO')       # Standard logging
+   setup_logging('QUIET')      # Minimal logging
+   ```
+
+3. **File Logging**:
+   ```python
+   setup_logging('INFO', 'logs/agent.log')
+   ```
+
+## Extension Guidelines
+
+### Adding New Nodes
+
+1. Create a new node class in `agent/nodes.py`
+2. Implement the required async methods (`prep_async`, `exec_async`, `post_async`)
+3. Add logging statements for debugging
+4. Register the node in `agent/utils/node_registry.py`
+
+### Adding New Workflows
+
+1. Design the workflow structure
+2. Create node implementations if needed
+3. Update the workflow store to save/retrieve workflows
+4. Test with the demo or web interface
+
+### Customizing Logging
+
+1. Modify `logging_config.py` for custom formatting
+2. Add new loggers for specific components
+3. Configure different log levels for different environments
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Import Errors**: Ensure all dependencies are installed
+2. **API Key Issues**: Verify your OpenAI API key is set correctly
+3. **WebSocket Connection**: Check if the server is running on the correct port
+4. **Logging Issues**: Verify the LOG_LEVEL environment variable is set correctly
+
+### Debug Mode
+
+For detailed debugging, run with DEBUG logging:
+
+```bash
+LOG_LEVEL=DEBUG python server.py
+```
+
+This will show detailed information about:
+- Node execution flow
+- LLM calls and responses
+- WebSocket communication
+- Error details and stack traces
+
 ### Testing
 
 ```bash

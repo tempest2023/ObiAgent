@@ -4,7 +4,8 @@ from .nodes import (
     WorkflowExecutorNode, 
     UserInteractionNode, 
     WorkflowOptimizerNode,
-    StreamingChatNode
+    StreamingChatNode,
+    WorkflowEndNode
 )
 
 def create_streaming_chat_flow():
@@ -25,6 +26,7 @@ def create_general_agent_flow():
     executor = WorkflowExecutorNode()
     interaction = UserInteractionNode()
     optimizer = WorkflowOptimizerNode()
+    end_node = WorkflowEndNode()
     
     # Connect the workflow design flow
     designer - "execute_workflow" >> executor
@@ -39,7 +41,7 @@ def create_general_agent_flow():
     
     # Connect optimization flow
     optimizer - "optimize_workflow" >> designer  # Go back to design with improvements
-    optimizer - "workflow_success" >> None  # End flow
+    optimizer - "workflow_success" >> end_node  # End flow with completion node
     
     return AsyncFlow(start=designer)
 
@@ -49,8 +51,9 @@ def create_simple_agent_flow():
     """
     designer = WorkflowDesignerNode()
     executor = WorkflowExecutorNode()
+    end_node = WorkflowEndNode()
     
     designer - "execute_workflow" >> executor
-    executor - "workflow_complete" >> None
+    executor - "workflow_complete" >> end_node
     
     return AsyncFlow(start=designer) 

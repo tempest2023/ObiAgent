@@ -6,6 +6,11 @@ import json
 from agent.flow import create_general_agent_flow
 from agent.utils.node_registry import node_registry
 from agent.utils.workflow_store import workflow_store
+from logging_config import setup_logging, get_logger
+
+# Setup logging
+setup_logging('INFO')  # Use INFO level for demo
+logger = get_logger(__name__)
 
 class DemoWebSocket:
     def __init__(self):

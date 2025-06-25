@@ -11,10 +11,11 @@ from agent.flow import create_general_agent_flow, create_streaming_chat_flow
 from agent.utils.node_registry import node_registry
 from agent.utils.workflow_store import workflow_store
 from agent.utils.permission_manager import permission_manager
+from logging_config import setup_logging, get_logger
 
-# Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Setup logging
+setup_logging()
+logger = get_logger(__name__)
 
 # FastAPI App with OpenAPI Customization
 app = FastAPI(
