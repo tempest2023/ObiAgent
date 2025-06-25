@@ -1,7 +1,7 @@
 import asyncio
 import json
 from pocketflow import AsyncNode
-from utils.stream_llm import stream_llm
+from agent.utils.stream_llm import stream_llm
 
 class StreamingChatNode(AsyncNode):
     async def prep_async(self, shared):

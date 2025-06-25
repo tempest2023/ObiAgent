@@ -7,6 +7,7 @@ from fastapi.exception_handlers import RequestValidationError
 from fastapi.exceptions import HTTPException
 from agent.flow import create_streaming_chat_flow
 
+
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
