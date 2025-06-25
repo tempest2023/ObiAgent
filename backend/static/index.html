@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PocketFlow General Agent</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .chat-container {
+            height: 400px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .agent-message {
+            background: #e9ecef;
+            color: #333;
+        }
+        
+        .system-message {
+            background: #ffc107;
+            color: #333;
+            font-style: italic;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .example-questions {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .example-questions h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .example-question {
+            background: white;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+        
+        .example-question:hover {
+            background: #007bff;
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .workflow-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 PocketFlow General Agent</h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="message agent-message">
+                Hello! I'm your PocketFlow General Agent. I can help you solve complex problems by designing and executing workflows. Try asking me something like "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon."
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Ask me anything..." disabled>
+            <button id="sendButton" disabled>Send</button>
+        </div>
+        
+        <div class="example-questions">
+            <h3>💡 Example Questions</h3>
+            <div class="example-question" onclick="sendExample(this)">
+                Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.
+            </div>
+            <div class="example-question" onclick="sendExample(this)">
+                Find me the best hotel deals in Tokyo for next month, budget around $200 per night.
+            </div>
+            <div class="example-question" onclick="sendExample(this)">
+                Analyze the cost-effectiveness of different transportation options from New York to Boston.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+        
+        const statusDiv = document.getElementById('status');
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        
+        function updateStatus(status, className) {
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${className}`;
+        }
+        
+        function addMessage(content, type = 'agent') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            
+            if (typeof content === 'object') {
+                // Handle structured content
+                if (content.type === 'workflow_design') {
+                    messageDiv.innerHTML = `
+                        <strong>🎯 Workflow Design</strong><br>
+                        <strong>Name:</strong> ${content.workflow?.name || 'Unknown'}<br>
+                        <strong>Description:</strong> ${content.workflow?.description || 'No description'}<br>
+                        <strong>Estimated Steps:</strong> ${content.estimated_steps || 'Unknown'}<br>
+                        <strong>Requires Permission:</strong> ${content.requires_permission ? 'Yes' : 'No'}
+                    `;
+                } else if (content.type === 'workflow_progress') {
+                    messageDiv.innerHTML = `
+                        <strong>⚡ Progress Update</strong><br>
+                        <strong>Current Node:</strong> ${content.current_node}<br>
+                        <strong>Description:</strong> ${content.description}<br>
+                        <strong>Progress:</strong> ${content.progress}
+                    `;
+                    
+                    // Add progress bar
+                    const progressBar = document.createElement('div');
+                    progressBar.className = 'progress-bar';
+                    const progressFill = document.createElement('div');
+                    progressFill.className = 'progress-fill';
+                    const progress = content.progress.split('/');
+                    const percentage = (parseInt(progress[0]) / parseInt(progress[1])) * 100;
+                    progressFill.style.width = `${percentage}%`;
+                    progressBar.appendChild(progressFill);
+                    messageDiv.appendChild(progressBar);
+                } else if (content.type === 'node_complete') {
+                    messageDiv.innerHTML = `
+                        <strong>✅ Node Complete</strong><br>
+                        <strong>Node:</strong> ${content.node}<br>
+                        <strong>Result:</strong> ${typeof content.result === 'object' ? JSON.stringify(content.result, null, 2) : content.result}
+                    `;
+                } else if (content.type === 'node_error') {
+                    messageDiv.innerHTML = `
+                        <strong>❌ Node Error</strong><br>
+                        <strong>Node:</strong> ${content.node}<br>
+                        <strong>Error:</strong> ${content.error}
+                    `;
+                } else {
+                    messageDiv.textContent = JSON.stringify(content, null, 2);
+                }
+            } else {
+                messageDiv.textContent = content;
+            }
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function connect() {
+            updateStatus('Connecting...', 'connecting');
+            
+            ws = new WebSocket('ws://localhost:8000/api/v1/ws');
+            
+            ws.onopen = function() {
+                isConnected = true;
+                updateStatus('Connected', 'connected');
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                addMessage('Connected to PocketFlow General Agent!', 'system');
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('Received:', data);
+                
+                if (data.type === 'chunk') {
+                    // Handle streaming response
+                    const lastMessage = chatContainer.lastElementChild;
+                    if (lastMessage && lastMessage.classList.contains('agent-message')) {
+                        lastMessage.textContent += data.content;
+                    } else {
+                        addMessage(data.content, 'agent');
+                    }
+                } else if (data.type === 'start') {
+                    addMessage('', 'agent');
+                } else if (data.type === 'end') {
+                    // End of streaming
+                } else {
+                    addMessage(data.content, 'agent');
+                }
+            };
+            
+            ws.onclose = function() {
+                isConnected = false;
+                updateStatus('Disconnected', 'disconnected');
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+                addMessage('Connection lost. Please refresh the page.', 'system');
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                updateStatus('Connection Error', 'disconnected');
+            };
+        }
+        
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message && isConnected) {
+                addMessage(message, 'user');
+                
+                ws.send(JSON.stringify({
+                    type: 'chat',
+                    content: message
+                }));
+                
+                messageInput.value = '';
+            }
+        }
+        
+        function sendExample(element) {
+            if (isConnected) {
+                const message = element.textContent;
+                messageInput.value = message;
+                sendMessage();
+            } else {
+                alert('Please wait for the connection to be established.');
+            }
+        }
+        
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Connect on page load
+        connect();
+    </script>
+</body>
+</html> 
