@@ -1,6 +1,25 @@
 # PocketFlow 通用智能体系统
 
-一个构建于 PocketFlow 之上的复杂智能体系统，能够动态设计并执行工作流来解决用户的复杂问题。该系统能够从成功的工作流中学习，并支持处理用户交互和敏感操作权限管理。
+一个构建于 PocketFlow 之上的智能代理系统，能够动态设计并执行工作流来解决用户的复杂问题。该系统具备学习能力，可以从成功的工作流中积累经验，并提供智能的用户交互和敏感操作权限管理功能。
+
+## 📋 目录
+
+- [🎯 系统概览](#-系统概览)
+- [🏗️ 系统架构](#️-系统架构)
+- [🚀 快速开始](#-快速开始)
+- [📡 API 接口](#-api-接口)
+- [🔧 使用示例](#-使用示例)
+- [🧠 学习与优化机制](#-学习与优化机制)
+- [🔒 安全与权限控制](#-安全与权限控制)
+- [📊 统计与监控](#-统计与监控)
+- [🛠️ 开发说明](#️-开发说明)
+- [日志系统](#日志系统)
+- [配置说明](#配置说明)
+- [扩展指南](#扩展指南)
+- [故障排查](#故障排查)
+- [🤝 贡献须知](#-贡献须知)
+- [📝 许可协议](#-许可协议)
+- [🔗 相关文档](#-相关文档)
 
 ## 🎯 系统概览
 
@@ -16,7 +35,7 @@
 
 ### 核心组件
 
-#### 1. **节点注册器** (`utils/node_registry.py`)
+#### 1. **节点注册器** ([`utils/node_registry.py`](agent/utils/node_registry.py))
 
 * **作用**：记录所有智能体可用的节点
 * **功能**：
@@ -26,7 +45,7 @@
   * 权限等级（无、基础、敏感、关键）
   * 示例用法模式
 
-#### 2. **工作流存储器** (`utils/workflow_store.py`)
+#### 2. **工作流存储器** ([`utils/workflow_store.py`](agent/utils/workflow_store.py))
 
 * **作用**：持久化保存成功的工作流以供重用
 * **功能**：
@@ -36,7 +55,7 @@
   * 成功率跟踪与学习机制
   * 提供工作流优化建议
 
-#### 3. **权限管理器** (`utils/permission_manager.py`)
+#### 3. **权限管理器** ([`utils/permission_manager.py`](agent/utils/permission_manager.py))
 
 * **作用**：处理敏感操作所需的用户权限
 * **功能**：
@@ -46,7 +65,7 @@
   * 支持多种权限类型（支付、预订等）
   * 用户响应处理机制
 
-#### 4. **智能体节点** (`nodes.py`)
+#### 4. **智能体节点** ([`nodes.py`](agent/nodes.py))
 
 ##### WorkflowDesignerNode（工作流设计节点）
 
@@ -229,7 +248,7 @@ ws.onmessage = (event) => {
 
 ### 添加新节点
 
-在 `utils/node_registry.py` 注册：
+在 [`utils/node_registry.py`](agent/utils/node_registry.py) 注册：
 
 ```python
 node_registry.register_node(NodeMetadata(
@@ -243,7 +262,7 @@ node_registry.register_node(NodeMetadata(
 ))
 ```
 
-然后在 `WorkflowExecutorNode._execute_node()` 中实现逻辑。
+然后在 [`nodes.py`](agent/nodes.py) 的 `WorkflowExecutorNode._execute_node()` 中实现逻辑。
 
 ## 🧠 学习与优化机制
 
@@ -306,13 +325,13 @@ backend/
 │   └── README.md
 ├── server.py                 # FastAPI 服务入口
 ├── requirements.txt          # 项目依赖
-└── README.md                # 项目说明文档
+└── README.md                 # 项目说明文档
 ```
 
 ### 扩展指南
 
 1. **添加新节点**：注册节点并在执行器中实现
-2. **新增工作流**：在 `flow.py` 中编写逻辑
+2. **新增工作流**：在 [`flow.py`](agent/flow.py) 中编写逻辑
 3. **扩展工具包**：新增 utils 模块
 4. **新增 API**：在 FastAPI 中添加新接口
 
@@ -368,6 +387,135 @@ curl http://localhost:8000/api/v1/nodes
 curl http://localhost:8000/api/v1/workflows
 ```
 
+## 日志系统
+
+系统包含一个全面的日志系统，用于跟踪执行流程和调试问题。
+
+### 日志级别
+
+* **DEBUG**：开发时的详细日志（包括函数名和行号）
+* **INFO**：生产环境推荐使用的标准日志
+* **WARNING**：仅记录警告和错误
+* **ERROR**：仅记录错误信息
+* **QUIET**：仅记录关键错误（适用于性能要求高的场景）
+
+### 使用方式
+
+```bash
+# 通过环境变量设置日志等级
+export LOG_LEVEL=DEBUG
+python server.py
+
+# 或在代码中设置
+from logging_config import setup_logging
+setup_logging('DEBUG')
+
+# 测试不同日志等级
+python test_logging.py
+```
+
+### 日志功能特点
+
+* **表情符号日志**：便于快速识别不同操作类型
+* **结构化日志信息**：清晰一致的日志格式
+* **节点级别日志**：每个节点独立记录日志
+* **流程跟踪**：支持完整工作流的执行过程追踪
+* **错误处理日志**：详细记录错误上下文
+* **性能监控**：跟踪执行时间和资源使用情况
+
+### 示例日志输出
+
+```log
+2024-01-15 10:30:15 - agent.nodes - INFO - 🔄 WorkflowDesignerNode: 开始 prep_async
+2024-01-15 10:30:15 - agent.nodes - INFO - 📝 WorkflowDesignerNode: 正在处理问题：帮我订一张从洛杉矶出发的机票...
+2024-01-15 10:30:15 - agent.nodes - INFO - 🔧 WorkflowDesignerNode: 找到 11 个可用节点
+2024-01-15 10:30:15 - agent.nodes - INFO - 🤖 WorkflowDesignerNode: 调用 LLM 设计工作流
+2024-01-15 10:30:18 - agent.nodes - INFO - ✅ WorkflowDesignerNode: 成功解析 YAML 响应
+2024-01-15 10:30:18 - agent.nodes - INFO - 🎯 WorkflowDesignerNode: 成功设计出名为 'Flight Booking Workflow' 的 6 步工作流
+```
+
+## 配置说明
+
+### 环境变量
+
+* `OPENAI_API_KEY`：你的 OpenAI API 密钥
+* `LOG_LEVEL`：日志级别（DEBUG, INFO, WARNING, ERROR, QUIET）
+* `LOG_FILE`：可选，日志输出文件路径
+
+### 日志配置方式
+
+日志系统支持多种配置方式：
+
+1. **使用环境变量**：
+
+   ```bash
+   export LOG_LEVEL=DEBUG
+   export LOG_FILE=logs/agent.log
+   ```
+
+2. **在代码中配置**：
+
+   ```python
+   from logging_config import setup_logging
+
+   # 设置不同日志等级
+   setup_logging('DEBUG')      # 详细日志
+   setup_logging('INFO')       # 标准日志
+   setup_logging('QUIET')      # 最小化日志
+   ```
+
+3. **文件输出日志**：
+
+   ```python
+   setup_logging('INFO', 'logs/agent.log')
+   ```
+
+## 扩展指南
+
+### 添加新节点
+
+1. 在 [`agent/nodes.py`](agent/nodes.py) 中创建新的节点类
+2. 实现必要的异步方法（`prep_async`, `exec_async`, `post_async`）
+3. 添加日志语句以便调试
+4. 在 [`agent/utils/node_registry.py`](agent/utils/node_registry.py) 中注册新节点
+
+### 添加新工作流
+
+1. 设计工作流结构
+2. 实现所需节点逻辑
+3. 更新工作流存储以支持保存/读取
+4. 使用 demo 或 Web 接口进行测试
+
+### 自定义日志格式
+
+1. 修改 [`logging_config.py`](logging_config.py) 实现自定义格式
+2. 为特定模块添加新的 logger
+3. 为不同环境配置不同日志等级
+
+## 故障排查
+
+### 常见问题
+
+1. **导入错误**：请确认所有依赖已正确安装
+2. **API 密钥问题**：确认 OpenAI API 密钥已设置
+3. **WebSocket 连接失败**：检查服务器是否在正确端口运行
+4. **日志不输出**：确认 `LOG_LEVEL` 环境变量设置是否正确
+
+### 调试模式
+
+若需详细调试信息，可启用 DEBUG 日志：
+
+```bash
+LOG_LEVEL=DEBUG python server.py
+```
+
+该模式将输出以下详细信息：
+
+* 节点执行流程
+* LLM 调用及返回值
+* WebSocket 通信信息
+* 错误细节和堆栈信息
+
 ## 🤝 贡献须知
 
 1. 遵循 PocketFlow 的设计模式
@@ -379,6 +527,13 @@ curl http://localhost:8000/api/v1/workflows
 ## 📝 许可协议
 
 本项目遵循与 PocketFlow 相同的开源许可协议。
+
+## 🔗 相关文档
+
+- [主项目 README](../README.md) - ObiAgent 项目整体概览
+- [智能体文档](agent/README.md) - 详细的智能体实现文档
+- [依赖清单](requirements.txt) - Python 依赖包
+- [服务器实现](server.py) - FastAPI 服务器代码
 
 ---
 

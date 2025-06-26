@@ -1,6 +1,25 @@
 # PocketFlow General Agent System
 
-A sophisticated agent system built on PocketFlow that can dynamically design and execute workflows to solve complex user problems. The system learns from successful workflows and can handle user interactions and permissions for sensitive operations.
+A sophisticated agent system built on PocketFlow that dynamically designs and executes workflows to solve complex user problems. The system learns from successful workflows and handles user interactions with intelligent permission management for sensitive operations.
+
+## 📋 Table of Contents
+
+- [🎯 Overview](#-overview)
+- [🏗️ System Architecture](#️-system-architecture)
+- [🚀 Getting Started](#-getting-started)
+- [📡 API Endpoints](#-api-endpoints)
+- [🔧 Example Usage](#-example-usage)
+- [🧠 Learning and Optimization](#-learning-and-optimization)
+- [🔒 Security and Permissions](#-security-and-permissions)
+- [📊 Monitoring and Statistics](#-monitoring-and-statistics)
+- [🛠️ Development](#️-development)
+- [Logging System](#logging-system)
+- [Configuration](#configuration)
+- [Extension Guidelines](#extension-guidelines)
+- [Troubleshooting](#troubleshooting)
+- [🤝 Contributing](#-contributing)
+- [📝 License](#-license)
+- [🔗 Related Documentation](#-related-documentation)
 
 ## 🎯 Overview
 
@@ -16,7 +35,7 @@ The General Agent System is designed to solve complex, vague questions by:
 
 ### Core Components
 
-#### 1. **Node Registry** (`utils/node_registry.py`)
+#### 1. **Node Registry** ([`utils/node_registry.py`](agent/utils/node_registry.py))
 - **Purpose**: Catalogs all available nodes that the agent can use
 - **Features**:
   - Node metadata (description, inputs, outputs, permission levels)
@@ -24,7 +43,7 @@ The General Agent System is designed to solve complex, vague questions by:
   - Permission levels (none, basic, sensitive, critical)
   - Example usage patterns
 
-#### 2. **Workflow Store** (`utils/workflow_store.py`)
+#### 2. **Workflow Store** ([`utils/workflow_store.py`](agent/utils/workflow_store.py))
 - **Purpose**: Stores and retrieves successful workflows for reuse
 - **Features**:
   - Persistent storage of workflow patterns
@@ -32,7 +51,7 @@ The General Agent System is designed to solve complex, vague questions by:
   - Success rate tracking and learning
   - Workflow optimization suggestions
 
-#### 3. **Permission Manager** (`utils/permission_manager.py`)
+#### 3. **Permission Manager** ([`utils/permission_manager.py`](agent/utils/permission_manager.py))
 - **Purpose**: Handles user permissions for sensitive operations
 - **Features**:
   - Permission request creation and tracking
@@ -40,7 +59,7 @@ The General Agent System is designed to solve complex, vague questions by:
   - Support for different permission types (payment, booking, etc.)
   - User response handling
 
-#### 4. **Agent Nodes** (`nodes.py`)
+#### 4. **Agent Nodes** ([`nodes.py`](agent/nodes.py))
 
 ##### WorkflowDesignerNode
 - Analyzes user questions using LLM
@@ -210,7 +229,7 @@ The system can handle complex requests like:
 
 ### Adding New Nodes
 
-To add new functionality, register nodes in `utils/node_registry.py`:
+To add new functionality, register nodes in [`utils/node_registry.py`](agent/utils/node_registry.py):
 
 ```python
 node_registry.register_node(NodeMetadata(
@@ -224,7 +243,7 @@ node_registry.register_node(NodeMetadata(
 ))
 ```
 
-Then implement the node logic in `WorkflowExecutorNode._execute_node()`.
+Then implement the node logic in `WorkflowExecutorNode._execute_node()` in [`nodes.py`](agent/nodes.py).
 
 ## 🧠 Learning and Optimization
 
@@ -281,13 +300,13 @@ backend/
 │   └── README.md
 ├── server.py                 # FastAPI server
 ├── requirements.txt          # Dependencies
-└── README.md                # This file
+└── README.md                 # This file
 ```
 
 ### Extending the System
 
 1. **Add New Nodes**: Register in node registry and implement in executor
-2. **Add New Flows**: Create new flow functions in `flow.py`
+2. **Add New Flows**: Create new flow functions in [`flow.py`](agent/flow.py)
 3. **Add New Utilities**: Extend the utils package
 4. **Add New Endpoints**: Extend the FastAPI server
 
@@ -368,7 +387,7 @@ python test_logging.py
 
 ### Example Log Output
 
-```
+```log
 2024-01-15 10:30:15 - agent.nodes - INFO - 🔄 WorkflowDesignerNode: Starting prep_async
 2024-01-15 10:30:15 - agent.nodes - INFO - 📝 WorkflowDesignerNode: Processing question: Help book a flight ticket from Los Angeles...
 2024-01-15 10:30:15 - agent.nodes - INFO - 🔧 WorkflowDesignerNode: Found 11 available nodes
@@ -414,10 +433,10 @@ The logging system can be configured in several ways:
 
 ### Adding New Nodes
 
-1. Create a new node class in `agent/nodes.py`
+1. Create a new node class in [`agent/nodes.py`](agent/nodes.py)
 2. Implement the required async methods (`prep_async`, `exec_async`, `post_async`)
 3. Add logging statements for debugging
-4. Register the node in `agent/utils/node_registry.py`
+4. Register the node in [`agent/utils/node_registry.py`](agent/utils/node_registry.py)
 
 ### Adding New Workflows
 
@@ -428,7 +447,7 @@ The logging system can be configured in several ways:
 
 ### Customizing Logging
 
-1. Modify `logging_config.py` for custom formatting
+1. Modify [`logging_config.py`](logging_config.py) for custom formatting
 2. Add new loggers for specific components
 3. Configure different log levels for different environments
 
@@ -479,6 +498,13 @@ curl http://localhost:8000/api/v1/workflows
 ## 📝 License
 
 This project follows the same license as PocketFlow.
+
+## 🔗 Related Documentation
+
+- [Main Project README](../README.md) - Overview of the entire ObiAgent project
+- [Agent Documentation](agent/README.md) - Detailed agent implementation docs
+- [Requirements](requirements.txt) - Python dependencies
+- [Server Implementation](server.py) - FastAPI server code
 
 ---
 
