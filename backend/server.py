@@ -11,6 +11,7 @@ from agent.flow import create_general_agent_flow, create_streaming_chat_flow
 from agent.utils.node_registry import node_registry
 from agent.utils.workflow_store import workflow_store
 from agent.utils.permission_manager import permission_manager
+from agent.nodes import UserResponseRequiredException
 from logging_config import setup_logging, get_logger
 
 # Setup logging
@@ -191,7 +192,11 @@ async def websocket_endpoint(websocket: WebSocket):
     shared_store = {
         "websocket": websocket,
         "conversation_history": [],
-        "session_id": f"session_{websocket.client.port}_{websocket.client.host}"
+        "session_id": f"session_{websocket.client.port}_{websocket.client.host}",
+        "waiting_for_user_response": False,
+        "waiting_for_permission": False,
+        "pending_user_question": None,
+        "pending_permission_request": None
     }
     
     try:
@@ -204,14 +209,96 @@ async def websocket_endpoint(websocket: WebSocket):
             
             if message_type == "chat":
                 # Standard chat message - use general agent flow
-                shared_store["user_message"] = message.get("content", "")
-                flow = create_general_agent_flow()
-                await flow.run_async(shared_store)
+                if not shared_store.get("waiting_for_user_response") and not shared_store.get("waiting_for_permission"):
+                    shared_store["user_message"] = message.get("content", "")
+                    flow = create_general_agent_flow()
+                    shared_store["current_flow"] = flow
+                    try:
+                        await flow.run_async(shared_store)
+                    except UserResponseRequiredException as e:
+                        logger.info(f"⏸️ Workflow paused for user response: {e}")
+                        # 保存暂停状态，等待用户响应
+                        shared_store["paused_workflow"] = {
+                            "flow": flow,
+                            "exception": e,
+                            "node_name": e.node_name,
+                            "question": e.question,
+                            "node_index": e.node_index
+                        }
+                    except Exception as e:
+                        logger.error(f"❌ Workflow execution failed: {e}")
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "content": f"Workflow execution failed: {str(e)}"
+                        }))
+                else:
+                    # Still waiting for user input, ignore new chat messages
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "content": "Please respond to the current question or permission request first."
+                    }))
                 
             elif message_type == "user_response":
                 # User response to a question
-                shared_store["user_response"] = message.get("content", "")
+                question_id = message.get("question_id")
+                response_content = message.get("content", "")
+                
+                logger.info(f"📥 Received user response: {response_content[:50]}...")
+                
+                # Store the user response
+                shared_store["user_response"] = response_content
                 shared_store["waiting_for_user_response"] = False
+                shared_store["pending_user_question"] = None
+                
+                # Add to conversation history
+                shared_store["conversation_history"].append({
+                    "role": "user",
+                    "content": response_content,
+                    "type": "response"
+                })
+                
+                logger.info("✅ User response processed, continuing workflow execution")
+                
+                # 检查是否有暂停的 workflow 需要继续执行
+                if shared_store.get("paused_workflow"):
+                    logger.info("🔄 Continuing paused workflow execution")
+                    try:
+                        paused_workflow = shared_store["paused_workflow"]
+                        flow = paused_workflow["flow"]
+                        exception = paused_workflow["exception"]
+                        
+                        # 设置从下一个节点开始执行
+                        shared_store["current_node_index"] = exception.node_index + 1
+                        
+                        # 继续执行 workflow
+                        await flow.run_async(shared_store)
+                        
+                        # 清除暂停状态
+                        shared_store.pop("paused_workflow", None)
+                        shared_store.pop("current_node_index", None)
+                        
+                        logger.info("✅ Workflow execution completed successfully")
+                        
+                    except UserResponseRequiredException as e:
+                        logger.info(f"⏸️ Workflow paused again for user response: {e}")
+                        # 更新暂停状态
+                        shared_store["paused_workflow"] = {
+                            "flow": flow,
+                            "exception": e,
+                            "node_name": e.node_name,
+                            "question": e.question,
+                            "node_index": e.node_index
+                        }
+                    except Exception as e:
+                        logger.error(f"❌ Failed to continue workflow: {e}")
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "content": f"Failed to continue workflow: {str(e)}"
+                        }))
+                        # 清除暂停状态
+                        shared_store.pop("paused_workflow", None)
+                else:
+                    logger.info("ℹ️ No paused workflow to continue")
                 
             elif message_type == "permission_response":
                 # User response to permission request
@@ -219,9 +306,30 @@ async def websocket_endpoint(websocket: WebSocket):
                 granted = message.get("granted", False)
                 response = message.get("response", "")
                 
+                logger.info(f"📥 Received permission response: {granted} for {request_id}")
+                
                 if request_id:
+                    # Update permission manager
                     permission_manager.respond_to_request(request_id, granted, response)
+                    
+                    # Update shared store
                     shared_store["waiting_for_permission"] = False
+                    shared_store["pending_permission_request"] = None
+                    shared_store["permission_response"] = {
+                        "request_id": request_id,
+                        "granted": granted,
+                        "response": response
+                    }
+                    
+                    # Add to conversation history
+                    shared_store["conversation_history"].append({
+                        "role": "user",
+                        "content": f"Permission {'granted' if granted else 'denied'} for {request_id}",
+                        "type": "permission_response"
+                    })
+                    
+                    logger.info("✅ Permission response processed, workflow should continue automatically")
+                    # Note: The workflow will continue automatically when waiting_for_permission becomes False
                 
             elif message_type == "feedback":
                 # User feedback for workflow optimization
