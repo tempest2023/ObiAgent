@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "id": "0437e5d0f905",
+    "id": "8e26e920fe5a",
     "name": "Workflow for: Help book a flight ticket from Los Angeles to Shan...",
     "description": "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.",
     "question_pattern": "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.",
@@ -8,14 +8,14 @@
       "flight_search",
       "cost_analysis",
       "preference_matcher",
-      "result_summarizer",
       "user_query",
-      "flight_booking"
+      "flight_booking",
+      "payment_processing"
     ],
     "success_rate": 1.0,
-    "created_at": "2025-06-24T23:22:31.692054",
-    "last_used": "2025-06-25T23:04:56.470639",
-    "usage_count": 17,
+    "created_at": "2025-06-25T23:01:06.610132",
+    "last_used": "2025-06-25T23:05:41.348350",
+    "usage_count": 2,
     "tags": [
       "flight_booking",
       "cost_analysis"
@@ -24,7 +24,7 @@
   "nodes": [
     {
       "name": "flight_search",
-      "description": "Search for flight options and prices from LAX to PVG with a preference for afternoon departure.",
+      "description": "Search for flight options and prices based on user preferences.",
       "inputs": [
         {
           "origin": "LAX"
@@ -33,7 +33,7 @@
           "destination": "PVG"
         },
         {
-          "date": "User's selected travel date"
+          "date": "<user_provided_date>"
         },
         {
           "preferences": "afternoon departure"
@@ -46,7 +46,7 @@
     },
     {
       "name": "cost_analysis",
-      "description": "Analyze the flight options to find the best cost performance.",
+      "description": "Analyze costs of the flight options to find the best value.",
       "inputs": [
         {
           "options": "flight_options"
@@ -62,10 +62,10 @@
     },
     {
       "name": "preference_matcher",
-      "description": "Match the analyzed flight options with user preferences.",
+      "description": "Match user preferences with available flight options.",
       "inputs": [
         {
-          "options": "analysis_result"
+          "options": "flight_options"
         },
         {
           "preferences": "afternoon departure"
@@ -77,27 +77,11 @@
       "requires_permission": false
     },
     {
-      "name": "result_summarizer",
-      "description": "Summarize the matched flight options and provide recommendations.",
-      "inputs": [
-        {
-          "results": "matched_options"
-        },
-        {
-          "user_question": "Help book a flight ticket from Los Angeles to Shanghai"
-        }
-      ],
-      "outputs": [
-        "summary"
-      ],
-      "requires_permission": false
-    },
-    {
       "name": "user_query",
-      "description": "Ask user for additional information like travel date or budget.",
+      "description": "Ask user for additional information or clarification if needed.",
       "inputs": [
         {
-          "question": "What is your preferred travel date?"
+          "question": "What is your budget range for this flight?"
         }
       ],
       "outputs": [
@@ -107,55 +91,76 @@
     },
     {
       "name": "flight_booking",
-      "description": "Book the selected flight after user confirms.",
+      "description": "Book the selected flight ticket.",
       "inputs": [
         {
-          "flight_option": "selected_flight"
+          "flight_option": "<user_selected_flight>"
         },
         {
-          "passenger_info": "user_details"
+          "passenger_info": "<user_details>"
         },
         {
-          "payment_info": "payment_method"
+          "payment_info": "<user_payment_info>"
         }
       ],
       "outputs": [
         "booking_confirmation"
       ],
       "requires_permission": true
+    },
+    {
+      "name": "payment_processing",
+      "description": "Process payment for booking the flight ticket.",
+      "inputs": [
+        {
+          "amount": "<flight_cost>"
+        },
+        {
+          "payment_method": "<user_payment_method>"
+        },
+        {
+          "description": "Flight booking LAX-PVG"
+        }
+      ],
+      "outputs": [
+        "payment_confirmation"
+      ],
+      "requires_permission": true
     }
   ],
   "connections": [
     {
-      "from": "user_query",
-      "to": "flight_search",
-      "action": "gather travel date"
-    },
-    {
       "from": "flight_search",
       "to": "cost_analysis",
-      "action": "analyze flight options"
+      "action": "analyze"
     },
     {
       "from": "cost_analysis",
       "to": "preference_matcher",
-      "action": "match options to preferences"
+      "action": "analyze"
     },
     {
       "from": "preference_matcher",
-      "to": "result_summarizer",
-      "action": "summarize results"
+      "to": "user_query",
+      "action": "match"
     },
     {
-      "from": "result_summarizer",
+      "from": "user_query",
       "to": "flight_booking",
-      "action": "book flight"
+      "action": "confirm"
+    },
+    {
+      "from": "flight_booking",
+      "to": "payment_processing",
+      "action": "book"
     }
   ],
   "shared_store_schema": {
-    "travel_date": "The date of travel chosen by the user",
-    "selected_flight": "The flight option selected by the user",
-    "user_details": "Information about the passenger",
-    "payment_method": "User's payment information"
+    "flight_options": "List of available flight options based on search criteria",
+    "analysis_result": "Best value flight options based on cost analysis",
+    "matched_options": "Flight options that match user preferences",
+    "user_details": "User's personal information for booking",
+    "user_payment_info": "User's payment information for processing",
+    "flight_cost": "Cost of the selected flight for payment processing"
   }
 }

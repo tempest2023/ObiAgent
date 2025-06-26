@@ -27,4 +27,5 @@ class UserQueryNode(Node):
     def post(self, shared, prep_res, exec_res):
         logger.info(f"💾 UserQueryNode: post - Storing pending question in shared['pending_user_question']")
         shared["pending_user_question"] = prep_res
+        shared["waiting_for_user_response"] = True
         return "wait_for_response" 

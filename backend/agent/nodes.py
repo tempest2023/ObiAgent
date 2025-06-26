@@ -30,6 +30,14 @@ from agent.function_nodes.data_formatter import DataFormatterNode
 # Configure logging
 logger = logging.getLogger(__name__)
 
+class UserResponseRequiredException(Exception):
+    """Exception raised when a workflow needs user input to continue"""
+    def __init__(self, node_name: str, question: str, node_index: int):
+        self.node_name = node_name
+        self.question = question
+        self.node_index = node_index
+        super().__init__(f"User response required for node {node_name} at index {node_index}")
+
 class WorkflowDesignerNode(AsyncNode):
     """
     Node that analyzes user questions and designs workflows.
@@ -269,13 +277,51 @@ class WorkflowExecutorNode(AsyncNode):
         shared = prep_res["shared"]
         nodes = workflow_design["workflow"]["nodes"]
         execution_order = [node["name"] for node in nodes]
-        logger.info(f"🚀 WorkflowExecutorNode: Starting execution of {len(nodes)} nodes")
+        
+        # 检查是否需要从特定节点继续执行
+        start_index = shared.get("current_node_index", 0)
+        if start_index > 0:
+            logger.info(f"🔄 WorkflowExecutorNode: Resuming from node index {start_index}")
+        
+        logger.info(f"🚀 WorkflowExecutorNode: Starting execution of {len(nodes)} nodes from index {start_index}")
         logger.info(f"📋 WorkflowExecutorNode: Execution order: {execution_order}")
         results = {}
+        
         for i, node_name in enumerate(execution_order):
+            # 如果从特定索引开始，跳过之前的节点
+            if i < start_index:
+                logger.info(f"⏭️ WorkflowExecutorNode: Skipping node {i}: {node_name}")
+                continue
+                
             node_config = next(n for n in nodes if n["name"] == node_name)
             logger.info(f"⚡ WorkflowExecutorNode: Executing node {i+1}/{len(execution_order)}: {node_name}")
             logger.info(f"📝 WorkflowExecutorNode: Node description: {node_config.get('description', 'No description')}")
+            
+            # --- BEGIN PATCH: user_query question improvement ---
+            if node_name == "user_query":
+                # Try to generate a meaningful question
+                question = None
+                # Prefer explicit question in node_config
+                if "question" in node_config and node_config["question"]:
+                    question = node_config["question"]
+                # Otherwise, use description to form a question
+                elif node_config.get("description"):
+                    question = node_config["description"]
+                # If still no question, try to compose from inputs
+                elif node_config.get("inputs"):
+                    # Compose a question from inputs
+                    inputs = node_config["inputs"]
+                    if isinstance(inputs, list) and len(inputs) > 0:
+                        question = f"Please provide the following information: {', '.join(inputs)}"
+                
+                # If no meaningful question found, raise an error
+                if not question:
+                    raise ValueError(f"UserQueryNode '{node_name}' has no meaningful question. Node config: {node_config}")
+                
+                shared["question"] = question
+                logger.info(f"🔧 WorkflowExecutorNode: Set question for user_query node: '{question}'")
+            # --- END PATCH ---
+
             if websocket:
                 try:
                     await websocket.send_text(json.dumps({
@@ -289,6 +335,7 @@ class WorkflowExecutorNode(AsyncNode):
                     logger.info(f"📤 WorkflowExecutorNode: Sent progress update for {node_name}")
                 except Exception as e:
                     logger.error(f"❌ WorkflowExecutorNode: Failed to send progress update: {e}")
+            
             try:
                 # Use real function node
                 node_cls = self.node_class_map.get(node_name)
@@ -299,9 +346,89 @@ class WorkflowExecutorNode(AsyncNode):
                     node = node_cls()
                     prep_res_node = node.prep(shared)
                     result = node.exec(prep_res_node)
-                    node.post(shared, prep_res_node, result)
+                    action = node.post(shared, prep_res_node, result)
+                    
+                    # Special handling for user_query node
+                    if node_name == "user_query" and action == "wait_for_response":
+                        logger.info("⏳ WorkflowExecutorNode: User query node requires response, pausing execution")
+                        
+                        # Send question to user via websocket
+                        if websocket:
+                            try:
+                                await websocket.send_text(json.dumps({
+                                    "type": "user_question",
+                                    "content": {
+                                        "question": prep_res_node,
+                                        "requires_response": True
+                                    }
+                                }))
+                                logger.info("📤 WorkflowExecutorNode: Sent user question via websocket")
+                            except Exception as e:
+                                logger.error(f"❌ WorkflowExecutorNode: Failed to send user question: {e}")
+                        
+                        # Check if this is a demo environment (DemoWebSocket)
+                        is_demo = hasattr(websocket, 'get_auto_response')
+                        
+                        if is_demo:
+                            logger.info("🎭 WorkflowExecutorNode: Demo environment detected, using auto-response")
+                            # Get auto response from demo websocket
+                            auto_response = websocket.get_auto_response(prep_res_node)
+                            shared["user_response"] = auto_response
+                            shared["waiting_for_user_response"] = False
+                            logger.info(f"🤖 WorkflowExecutorNode: Auto response: {auto_response[:50]}...")
+                        else:
+                            # 在生产环境中，我们暂停执行并等待服务器重新启动流程
+                            logger.info("⏸️ WorkflowExecutorNode: Pausing execution, waiting for server to resume")
+                            shared["waiting_for_user_response"] = True
+                            shared["current_node_index"] = i  # 保存当前节点索引
+                            shared["current_node_name"] = node_name
+                            
+                            # 抛出特殊异常来暂停执行
+                            raise UserResponseRequiredException(
+                                node_name=node_name,
+                                question=prep_res_node,
+                                node_index=i
+                            )
+                        
+                        # Get the user response
+                        user_response = shared.get("user_response", "")
+                        logger.info(f"✅ WorkflowExecutorNode: Received user response: {user_response[:50]}...")
+                        
+                        # Update the result with user response
+                        result = user_response
+                        shared[f"{node_name}_result"] = user_response
+                        
+                        # Clear the waiting flag
+                        shared["waiting_for_user_response"] = False
+                        shared["user_response"] = None
+                    
+                    # Special handling for permission_request node
+                    elif node_name == "permission_request" and action == "wait_for_permission":
+                        logger.info("⏳ WorkflowExecutorNode: Permission request node requires response, pausing execution")
+                        
+                        # Wait for permission response
+                        waiting_logged = False
+                        while shared.get("waiting_for_permission", False):
+                            if not waiting_logged:
+                                logger.info("⏳ WorkflowExecutorNode: Waiting for permission response...")
+                                waiting_logged = True
+                            await asyncio.sleep(0.1)
+                        
+                        # Get the permission response
+                        permission_response = shared.get("permission_response", {})
+                        logger.info(f"✅ WorkflowExecutorNode: Received permission response: {permission_response}")
+                        
+                        # Update the result with permission response
+                        result = permission_response
+                        shared[f"{node_name}_result"] = permission_response
+                        
+                        # Clear the waiting flag
+                        shared["waiting_for_permission"] = False
+                        shared["permission_response"] = None
+                
                 results[node_name] = result
                 logger.info(f"✅ WorkflowExecutorNode: Node {node_name} completed successfully")
+                
                 if websocket:
                     try:
                         await websocket.send_text(json.dumps({
@@ -314,6 +441,15 @@ class WorkflowExecutorNode(AsyncNode):
                         logger.info(f"📤 WorkflowExecutorNode: Sent completion message for {node_name}")
                     except Exception as e:
                         logger.error(f"❌ WorkflowExecutorNode: Failed to send completion message: {e}")
+                        
+            except UserResponseRequiredException as e:
+                # 这是预期的异常，用于暂停执行
+                logger.info(f"⏸️ WorkflowExecutorNode: Paused for user response: {e}")
+                # 清除当前节点索引，因为我们已经处理了这个异常
+                shared.pop("current_node_index", None)
+                shared.pop("current_node_name", None)
+                raise  # 重新抛出异常，让上层处理
+                
             except Exception as e:
                 logger.error(f"❌ WorkflowExecutorNode: Node {node_name} failed with error: {e}")
                 if websocket:
@@ -329,6 +465,7 @@ class WorkflowExecutorNode(AsyncNode):
                     except Exception as send_error:
                         logger.error(f"❌ WorkflowExecutorNode: Failed to send error message: {send_error}")
                 raise
+        
         logger.info(f"🎉 WorkflowExecutorNode: All {len(execution_order)} nodes completed successfully")
         logger.info("✅ WorkflowExecutorNode: exec_async completed")
         return results

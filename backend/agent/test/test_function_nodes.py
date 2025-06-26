@@ -66,7 +66,8 @@ def test_permission_request():
     shared = {"operation": "payment", "details": "Book flight"}
     prep_res = node.prep(shared)
     result = node.exec(prep_res)
-    assert "permission_request_id" in result or "message" in result
+    assert isinstance(result, str)
+    assert result.startswith("Permission request created:")
     node.post(shared, prep_res, result)
 
 # --- UserQueryNode ---
@@ -121,7 +122,7 @@ def test_analyze_results(monkeypatch):
     result = node.exec(prep_res)
     assert isinstance(result, dict)
     node.post(shared, prep_res, result)
-    assert "analyzed_results" in shared
+    assert "analysis" in shared
 
 # --- WebSearchNode ---
 def test_web_search(monkeypatch):

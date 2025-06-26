@@ -34,5 +34,6 @@ class PermissionRequestNode(Node):
 
     def post(self, shared, prep_res, exec_res):
         logger.info(f"💾 PermissionRequestNode: post - Storing pending permission request in shared['pending_permission_request']")
-        shared["pending_permission_request"] = prep_res
+        shared["pending_permission_request"] = exec_res.split(": ")[-1]  # Extract request ID
+        shared["waiting_for_permission"] = True
         return "wait_for_permission" 
