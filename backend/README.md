@@ -1,6 +1,10 @@
 # PocketFlow General Agent System
 
-A sophisticated agent system built on PocketFlow that dynamically designs and executes workflows to solve complex user problems. The system learns from successful workflows and handles user interactions with intelligent permission management for sensitive operations.
+Welcome to the PocketFlow General Agent System! 🎉 
+
+This is a sophisticated and user-friendly agent system built on PocketFlow that dynamically designs and executes workflows to solve complex user problems. The system learns from successful workflows and handles user interactions with intelligent permission management for sensitive operations.
+
+Whether you're looking to book flights, analyze data, or automate complex tasks, our agent system is designed to understand your needs and create the perfect workflow to get things done!
 
 ## 📋 Table of Contents
 
@@ -13,10 +17,10 @@ A sophisticated agent system built on PocketFlow that dynamically designs and ex
 - [🔒 Security and Permissions](#-security-and-permissions)
 - [📊 Monitoring and Statistics](#-monitoring-and-statistics)
 - [🛠️ Development](#️-development)
-- [Logging System](#logging-system)
-- [Configuration](#configuration)
-- [Extension Guidelines](#extension-guidelines)
-- [Troubleshooting](#troubleshooting)
+- [📝 Logging System](#-logging-system)
+- [⚙️ Configuration](#️-configuration)
+- [🔧 Extension Guidelines](#-extension-guidelines)
+- [🔍 Troubleshooting](#-troubleshooting)
 - [🤝 Contributing](#-contributing)
 - [📝 License](#-license)
 - [🔗 Related Documentation](#-related-documentation)
@@ -283,7 +287,7 @@ The system provides comprehensive statistics:
 ## 🛠️ Development
 
 ### Project Structure
-```
+```text
 backend/
 ├── agent/
 │   ├── nodes.py              # Agent node implementations
@@ -307,7 +311,7 @@ backend/
 4. **Add New Endpoints**: Extend the FastAPI server
 
 
-## Logging System
+## 📝 Logging System
 
 The system includes a comprehensive logging system to track execution flow and debug issues.
 
@@ -326,12 +330,14 @@ The system includes a comprehensive logging system to track execution flow and d
 export LOG_LEVEL=DEBUG
 python server.py
 
-# Or set it in code
-from logging_config import setup_logging
-setup_logging('DEBUG')
-
 # Test different logging levels
 python test_logging.py
+```
+
+Or set it in code:
+```python
+from logging_config import setup_logging
+setup_logging('DEBUG')
 ```
 
 ### Logging Features
@@ -354,7 +360,7 @@ python test_logging.py
 2024-01-15 10:30:18 - agent.nodes - INFO - 🎯 WorkflowDesignerNode: Designed workflow 'Flight Booking Workflow' with 6 steps
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 ### Environment Variables
 
@@ -387,7 +393,7 @@ The logging system can be configured in several ways:
    setup_logging('INFO', 'logs/agent.log')
    ```
 
-## Extension Guidelines
+## 🔧 Extension Guidelines
 
 ### Adding New Nodes
 
@@ -409,7 +415,7 @@ The logging system can be configured in several ways:
 2. Add new loggers for specific components
 3. Configure different log levels for different environments
 
-## Troubleshooting
+## 🔍 Troubleshooting
 
 ### Common Issues
 

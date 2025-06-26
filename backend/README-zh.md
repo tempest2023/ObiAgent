@@ -1,6 +1,10 @@
 # PocketFlow 通用智能体系统
 
-一个构建于 PocketFlow 之上的智能代理系统，能够动态设计并执行工作流来解决用户的复杂问题。该系统具备学习能力，可以从成功的工作流中积累经验，并提供智能的用户交互和敏感操作权限管理功能。
+欢迎使用 PocketFlow 通用智能体系统！🎉
+
+这是一个构建于 PocketFlow 之上的智能代理系统，能够动态设计并执行工作流来解决用户的复杂问题。该系统具备学习能力，可以从成功的工作流中积累经验，并提供智能的用户交互和敏感操作权限管理功能。
+
+无论您是想要预订机票、分析数据，还是自动化复杂任务，我们的智能体系统都能理解您的需求，并创建完美的工作流来完成任务！
 
 ## 📋 目录
 
@@ -13,10 +17,10 @@
 - [🔒 安全与权限控制](#-安全与权限控制)
 - [📊 统计与监控](#-统计与监控)
 - [🛠️ 开发说明](#️-开发说明)
-- [日志系统](#日志系统)
-- [配置说明](#配置说明)
-- [扩展指南](#扩展指南)
-- [故障排查](#故障排查)
+- [📝 日志系统](#-日志系统)
+- [⚙️ 配置说明](#️-配置说明)
+- [🔧 扩展指南](#-扩展指南)
+- [🔍 故障排查](#-故障排查)
 - [🤝 贡献须知](#-贡献须知)
 - [📝 许可协议](#-许可协议)
 - [🔗 相关文档](#-相关文档)
@@ -137,8 +141,8 @@ graph TD
 3. **设置环境变量：**
 
    ```bash
-   export OPENAI_API_KEY="你的-openai-api-key"
-   export GEMINI_API_KEY="你的-gemini-api-key"  # 可选
+   export OPENAI_API_KEY="你的openai-api-key"
+   export GEMINI_API_KEY="你的gemini-api-key"  # 可选
    ```
 
 4. **运行服务：**
@@ -309,7 +313,7 @@ node_registry.register_node(NodeMetadata(
 
 ### 项目结构
 
-```
+```text
 backend/
 ├── agent/
 │   ├── nodes.py              # 智能体节点实现
@@ -345,7 +349,7 @@ curl http://localhost:8000/api/v1/nodes
 curl http://localhost:8000/api/v1/workflows
 ```
 
-## 日志系统
+## 📝 日志系统
 
 系统包含一个全面的日志系统，用于跟踪执行流程和调试问题。
 
@@ -364,12 +368,14 @@ curl http://localhost:8000/api/v1/workflows
 export LOG_LEVEL=DEBUG
 python server.py
 
-# 或在代码中设置
-from logging_config import setup_logging
-setup_logging('DEBUG')
-
 # 测试不同日志等级
 python test_logging.py
+```
+
+或在代码中设置：
+```python
+from logging_config import setup_logging
+setup_logging('DEBUG')
 ```
 
 ### 日志功能特点
@@ -392,7 +398,7 @@ python test_logging.py
 2024-01-15 10:30:18 - agent.nodes - INFO - 🎯 WorkflowDesignerNode: 成功设计出名为 'Flight Booking Workflow' 的 6 步工作流
 ```
 
-## 配置说明
+## ⚙️ 配置说明
 
 ### 环境变量
 
@@ -428,7 +434,7 @@ python test_logging.py
    setup_logging('INFO', 'logs/agent.log')
    ```
 
-## 扩展指南
+## 🔧 扩展指南
 
 ### 添加新节点
 
@@ -450,7 +456,7 @@ python test_logging.py
 2. 为特定模块添加新的 logger
 3. 为不同环境配置不同日志等级
 
-## 故障排查
+## 🔍 故障排查
 
 ### 常见问题
 
