@@ -90,6 +90,10 @@ graph TD
 1. **Python 3.8+**
 2. **OpenAI API Key** (for LLM calls)
 3. **Google Generative AI Key** (optional, for alternative LLM)
+4. **Firecrawl API Key** (for web scraping)
+You can get your API key from https://www.firecrawl.dev/.
+
+You can set your API key in the `.env` file. And run `python3 setup_env.py` to generate the `.env_activate.sh` and `.env_deactivate.sh` files. Using `.env_activate.sh` to activate the environment variables without overwriting the existing environment variables. And using `.env_deactivate.sh` to deactivate the environment variables and restore the original environment variables.
 
 ### Installation
 
@@ -287,6 +291,44 @@ backend/
 3. **Add New Utilities**: Extend the utils package
 4. **Add New Endpoints**: Extend the FastAPI server
 
+## 🧪 Testing
+
+### Unit Tests
+
+The system includes comprehensive unit tests for all function nodes:
+
+```bash
+# Run all function node tests
+pytest agent/test/test_function_nodes.py
+
+# Run with verbose output
+pytest agent/test/test_function_nodes.py -v
+
+# Run specific test
+pytest agent/test/test_function_nodes.py::test_flight_search
+```
+
+### Test Coverage
+
+The test suite covers all function nodes:
+- `FirecrawlScrapeNode` - Web scraping functionality
+- `FlightBookingNode` - Flight booking simulation
+- `PreferenceMatcherNode` - User preference matching
+- `DataFormatterNode` - Data formatting utilities
+- `PermissionRequestNode` - Permission handling
+- `UserQueryNode` - User interaction management
+- `ResultSummarizerNode` - Result summarization
+- `CostAnalysisNode` - Cost analysis logic
+- `FlightSearchNode` - Flight search simulation
+- `AnalyzeResultsNode` - Search result analysis
+- `WebSearchNode` - Web search functionality
+
+### Test Features
+
+- **Mocked Dependencies**: External APIs and LLM calls are mocked for reliable testing
+- **Comprehensive Coverage**: Each node's `prep`, `exec`, and `post` methods are tested
+- **Error Handling**: Tests include error scenarios and edge cases
+- **Shared Store Validation**: Tests verify correct data storage in shared store
 
 ## Logging System
 
