@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 import random
 
 try:
-    from serpapi import GoogleSearch
-    SERPAPI_AVAILABLE = True
+    from duckduckgo_search import DDGS
+    DUCKDUCKGO_AVAILABLE = True
 except ImportError:
-    SERPAPI_AVAILABLE = False
+    DUCKDUCKGO_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class FlightSearchNode(Node):
     Node to search for flights using web search or enhanced mock data.
     
     This node can:
-    1. Use real web search (SerpAPI) to find flight information
+    1. Use real web search (DuckDuckGo) to find flight information
     2. Parse search results to extract flight details
     3. Fall back to enhanced mock data when real search is unavailable
     
@@ -269,45 +269,35 @@ class FlightSearchNode(Node):
         return f"{code}{number}"
 
     def _perform_web_search(self, query: str, num_results: int = 5) -> List[Dict]:
-        """Perform web search using SerpAPI."""
-        if not SERPAPI_AVAILABLE:
-            logger.warning("⚠️ FlightSearchNode: SerpAPI not available")
+        """Perform web search using DuckDuckGo."""
+        if not DUCKDUCKGO_AVAILABLE:
+            logger.warning("⚠️ FlightSearchNode: DuckDuckGo search not available")
             return []
             
-        api_key = os.getenv("SERPAPI_API_KEY")
-        if not api_key:
-            logger.warning("⚠️ FlightSearchNode: No SERPAPI_API_KEY found")
-            return []
-            
-        params = {
-            "engine": "google",
-            "q": query,
-            "api_key": api_key,
-            "num": num_results
-        }
-        
         try:
-            logger.info(f"🔍 FlightSearchNode: Searching for: {query}")
-            search = GoogleSearch(params)
-            results = search.get_dict()
+            logger.info(f"🔍 FlightSearchNode: Searching DuckDuckGo for: {query}")
             
-            if "organic_results" not in results:
-                logger.warning("⚠️ FlightSearchNode: No organic_results in search response")
+            # Use DuckDuckGo search
+            ddgs = DDGS()
+            results = ddgs.text(query, max_results=num_results)
+            
+            if not results:
+                logger.warning("⚠️ FlightSearchNode: No results from DuckDuckGo search")
                 return []
                 
             processed = []
-            for result in results["organic_results"][:num_results]:
+            for result in results:
                 processed.append({
                     "title": result.get("title", ""),
-                    "snippet": result.get("snippet", ""),
-                    "link": result.get("link", "")
+                    "snippet": result.get("body", ""),  # DuckDuckGo uses 'body' instead of 'snippet'
+                    "link": result.get("href", "")     # DuckDuckGo uses 'href' instead of 'link'
                 })
                 
-            logger.info(f"✅ FlightSearchNode: Found {len(processed)} search results")
+            logger.info(f"✅ FlightSearchNode: Found {len(processed)} search results from DuckDuckGo")
             return processed
             
         except Exception as e:
-            logger.error(f"❌ FlightSearchNode: Search error: {e}")
+            logger.error(f"❌ FlightSearchNode: DuckDuckGo search error: {e}")
             return []
 
     def _generate_enhanced_mock_flights(self, from_airport: str, to_airport: str, date: str, preferences: str, num_results: int) -> List[Dict]:
@@ -388,15 +378,15 @@ class FlightSearchNode(Node):
         logger.info(f"🔄 FlightSearchNode: exec - from='{from_airport}', to='{to_airport}', date='{date}', preferences='{preferences}'")
         
         # Try real search first if available
-        if SERPAPI_AVAILABLE and os.getenv("SERPAPI_API_KEY"):
+        if DUCKDUCKGO_AVAILABLE:
             query = self._construct_search_query(from_airport, to_airport, date, preferences)
             search_results = self._perform_web_search(query, num_results)
             
             if search_results:
-                logger.info("🌐 FlightSearchNode: Using real web search results")
+                logger.info("🌐 FlightSearchNode: Using real DuckDuckGo search results")
                 flights = self._parse_flight_info_from_search(search_results, from_airport, to_airport, date)
                 if flights:
-                    logger.info(f"✅ FlightSearchNode: Returning {len(flights)} flights from web search")
+                    logger.info(f"✅ FlightSearchNode: Returning {len(flights)} flights from DuckDuckGo search")
                     return flights
                     
         # Fall back to enhanced mock data

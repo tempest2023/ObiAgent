@@ -5,9 +5,10 @@ The `FlightSearchNode` provides intelligent flight search capabilities with both
 ## Features
 
 ### 🌐 Real Web Search Integration
-- Uses SerpAPI to search flight booking websites (Expedia, Kayak, Google Flights, Skyscanner)
+- Uses DuckDuckGo to search flight booking websites (Expedia, Kayak, Google Flights, Skyscanner)
 - Parses real flight information from search results
 - Extracts prices, airlines, times, and durations automatically
+- No API key required - works out of the box
 
 ### 🎯 Smart Preferences Support
 - **Time Preferences**: "morning departure", "afternoon departure"
@@ -71,15 +72,14 @@ shared = {
 
 ## Configuration
 
-### Environment Variables
-- `SERPAPI_API_KEY`: Required for real web search functionality
-  - Get your API key from [SerpAPI](https://serpapi.com/)
-  - Without this, the node falls back to enhanced mock data
-
 ### Dependencies
 ```bash
-pip install google-search-results
+pip install duckduckgo-search
 ```
+
+### No API Key Required
+- DuckDuckGo search works without any API keys or authentication
+- If DuckDuckGo search is unavailable, the node falls back to enhanced mock data
 
 ## Response Format
 
@@ -143,7 +143,7 @@ Major airports supported include:
 ## Error Handling
 
 The node gracefully handles:
-- Missing SerpAPI credentials (falls back to mock data)
+- DuckDuckGo search unavailability (falls back to mock data)
 - Network errors during search
 - Invalid airport codes
 - Missing or malformed preferences
