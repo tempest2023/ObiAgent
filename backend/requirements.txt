@@ -6,11 +6,7 @@ pocketflow
 httpx-ws
 pyyaml==6.0.1
 python-multipart==0.0.6
-<<<<<<< Updated upstream
 pytest>=8.4.1
 pytest-asyncio==1.0.0
 duckduckgo-search>=7.5.2
-=======
-pytest==7.4.3
 google-genai>=0.6.0
->>>>>>> Stashed changes
