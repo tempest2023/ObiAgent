@@ -1,5 +1,6 @@
 import os
 import pytest
+import importlib
 
 from agent.function_nodes.firecrawl_scrape import FirecrawlScrapeNode
 from agent.function_nodes.flight_booking import FlightBookingNode
@@ -125,13 +126,18 @@ def test_analyze_results(monkeypatch):
     assert "analysis" in shared
 
 # --- WebSearchNode ---
-def test_web_search(monkeypatch):
+def test_web_search():
+    if importlib.util.find_spec("duckduckgo_search") is None:
+        pytest.skip("duckduckgo_search not installed")
     node = WebSearchNode()
-    shared = {"query": "test", "num_results": 1}
-    # Patch SERPAPI_AVAILABLE to False to force mock
-    monkeypatch.setattr("agent.function_nodes.web_search.SERPAPI_AVAILABLE", False)
+    shared = {"query": "OpenAI GPT-4", "num_results": 2}
     prep_res = node.prep(shared)
     result = node.exec(prep_res)
     assert isinstance(result, list)
+    assert len(result) > 0
+    for item in result:
+        assert "title" in item
+        assert "snippet" in item
+        assert "link" in item
     node.post(shared, prep_res, result)
     assert "search_results" in shared 

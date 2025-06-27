@@ -295,13 +295,29 @@ class WorkflowExecutorNode(AsyncNode):
                     inputs = node_config["inputs"]
                     if isinstance(inputs, list) and len(inputs) > 0:
                         question = f"Please provide the following information: {', '.join(inputs)}"
-                
                 # If no meaningful question found, raise an error
                 if not question:
                     raise ValueError(f"UserQueryNode '{node_name}' has no meaningful question. Node config: {node_config}")
-                
                 shared["question"] = question
                 logger.info(f"🔧 WorkflowExecutorNode: Set question for user_query node: '{question}'")
+            # --- END PATCH ---
+
+            # --- BEGIN PATCH: web_search query auto-fill ---
+            if node_name == "web_search":
+                if not shared.get("query"):
+                    # 优先用 shared["user_message"]
+                    if shared.get("user_message"):
+                        shared["query"] = shared["user_message"]
+                    # 其次用 workflow_design["user_question"]
+                    elif workflow_design.get("user_question"):
+                        shared["query"] = workflow_design["user_question"]
+                    # 兼容 workflow 节点 inputs 字段
+                    elif node_config.get("inputs"):
+                        for input_key in node_config["inputs"]:
+                            if shared.get(input_key):
+                                shared["query"] = shared[input_key]
+                                break
+                logger.info(f"🔧 WorkflowExecutorNode: Set query for web_search node: '{shared.get('query')}'")
             # --- END PATCH ---
 
             if websocket:
