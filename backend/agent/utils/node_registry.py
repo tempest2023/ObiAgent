@@ -6,9 +6,14 @@ to design workflows. Each node has metadata describing its purpose, inputs,
 outputs, and whether it requires user permission.
 """
 
+import json
+import os
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class NodeCategory(Enum):
     """Categories for different types of nodes"""
@@ -40,16 +45,81 @@ class NodeMetadata:
     examples: List[Dict[str, Any]]
     estimated_cost: Optional[float] = None
     estimated_time: Optional[int] = None  # in seconds
+    module_path: Optional[str] = None
+    class_name: Optional[str] = None
 
 class NodeRegistry:
     """Registry of available nodes for workflow design"""
     
-    def __init__(self):
+    def __init__(self, config_path: Optional[str] = None):
         self.nodes: Dict[str, NodeMetadata] = {}
-        self._initialize_default_nodes()
+        self.config_path = config_path or self._get_default_config_path()
+        self._load_nodes_from_config()
+    
+    def _get_default_config_path(self) -> str:
+        """Get the default path to the function nodes configuration file"""
+        # Get the directory where this file is located
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Go up to agent directory and then to config
+        agent_dir = os.path.dirname(current_dir)
+        config_path = os.path.join(agent_dir, "config", "function_nodes.json")
+        return config_path
+    
+    def _load_nodes_from_config(self):
+        """Load node metadata from JSON configuration file"""
+        try:
+            logger.info(f"🔄 NodeRegistry: Loading nodes from config file: {self.config_path}")
+            
+            if not os.path.exists(self.config_path):
+                logger.warning(f"⚠️ NodeRegistry: Config file not found: {self.config_path}")
+                logger.info("🔄 NodeRegistry: Falling back to default nodes")
+                self._initialize_default_nodes()
+                return
+            
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            
+            nodes_config = config_data.get("nodes", {})
+            logger.info(f"📋 NodeRegistry: Found {len(nodes_config)} nodes in config file")
+            
+            for node_name, node_data in nodes_config.items():
+                try:
+                    # Convert string values to enums
+                    category = NodeCategory(node_data.get("category", "utility"))
+                    permission_level = PermissionLevel(node_data.get("permission_level", "none"))
+                    
+                    # Create NodeMetadata object
+                    metadata = NodeMetadata(
+                        name=node_data.get("name", node_name),
+                        description=node_data.get("description", ""),
+                        category=category,
+                        permission_level=permission_level,
+                        inputs=node_data.get("inputs", []),
+                        outputs=node_data.get("outputs", []),
+                        examples=node_data.get("examples", []),
+                        estimated_cost=node_data.get("estimated_cost"),
+                        estimated_time=node_data.get("estimated_time"),
+                        module_path=node_data.get("module_path"),
+                        class_name=node_data.get("class_name")
+                    )
+                    
+                    self.register_node(metadata)
+                    logger.debug(f"✅ NodeRegistry: Loaded node: {node_name}")
+                    
+                except Exception as e:
+                    logger.error(f"❌ NodeRegistry: Failed to load node {node_name}: {e}")
+                    continue
+            
+            logger.info(f"✅ NodeRegistry: Successfully loaded {len(self.nodes)} nodes from config")
+            
+        except Exception as e:
+            logger.error(f"❌ NodeRegistry: Failed to load config file: {e}")
+            logger.info("🔄 NodeRegistry: Falling back to default nodes")
+            self._initialize_default_nodes()
     
     def _initialize_default_nodes(self):
-        """Initialize the registry with default nodes"""
+        """Initialize the registry with default nodes (fallback)"""
+        logger.info("🔄 NodeRegistry: Initializing default nodes")
         
         # Search and Information Nodes
         self.register_node(NodeMetadata(
@@ -187,6 +257,8 @@ class NodeRegistry:
                 {"results": "analysis_results", "user_question": "Help book a flight ticket from Los Angeles to Shanghai"}
             ]
         ))
+        
+        logger.info(f"✅ NodeRegistry: Initialized {len(self.nodes)} default nodes")
     
     def register_node(self, metadata: NodeMetadata):
         """Register a new node in the registry"""
@@ -234,11 +306,21 @@ class NodeRegistry:
                     "permission_level": metadata.permission_level.value,
                     "inputs": metadata.inputs,
                     "outputs": metadata.outputs,
-                    "examples": metadata.examples
+                    "examples": metadata.examples,
+                    "estimated_cost": metadata.estimated_cost,
+                    "estimated_time": metadata.estimated_time,
+                    "module_path": metadata.module_path,
+                    "class_name": metadata.class_name
                 }
                 for name, metadata in self.nodes.items()
             }
         }
+    
+    def reload_config(self):
+        """Reload the configuration file"""
+        logger.info("🔄 NodeRegistry: Reloading configuration")
+        self.nodes.clear()
+        self._load_nodes_from_config()
 
 # Global registry instance
 node_registry = NodeRegistry() 

@@ -199,7 +199,7 @@ requires_permission: true
             return "Mock response"
     
     # Patch the call_llm function
-    with patch('agent.utils.stream_llm.call_llm', side_effect=mock_call_llm):
+    with patch('agent.nodes.call_llm', side_effect=mock_call_llm):
         # Create and run the flow
         flow = create_general_agent_flow()
         
@@ -258,7 +258,7 @@ workflow:
 """
         return "Mock response"
     
-    with patch('agent.utils.stream_llm.call_llm', side_effect=mock_call_llm):
+    with patch('agent.nodes.call_llm', side_effect=mock_call_llm):
         # Create and run the flow
         flow = create_general_agent_flow()
         
@@ -302,7 +302,7 @@ workflow:
 """
         return "Mock response"
     
-    with patch('agent.utils.stream_llm.call_llm', side_effect=mock_call_llm):
+    with patch('agent.nodes.call_llm', side_effect=mock_call_llm):
         # Create and run the flow
         flow = create_general_agent_flow()
         
@@ -345,7 +345,7 @@ workflow:
 """
         return "Mock response"
     
-    with patch('agent.utils.stream_llm.call_llm', side_effect=mock_call_llm):
+    with patch('agent.nodes.call_llm', side_effect=mock_call_llm):
         # Create and run the flow
         flow = create_general_agent_flow()
         
