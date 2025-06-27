@@ -12,11 +12,13 @@ from agent.utils.node_registry import node_registry
 from agent.utils.workflow_store import workflow_store
 from agent.utils.permission_manager import permission_manager
 from agent.nodes import UserResponseRequiredException
-from logging_config import setup_logging, get_logger
 
-# Setup logging
-setup_logging()
-logger = get_logger(__name__)
+# Setup standard logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 # FastAPI App with OpenAPI Customization
 app = FastAPI(
