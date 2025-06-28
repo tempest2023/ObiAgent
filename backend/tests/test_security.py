@@ -7,8 +7,7 @@ import pytest
 import os
 import json
 from unittest.mock import patch, Mock
-from agent.utils.stream_llm import call_llm
-from agent.utils.gemini_llm import call_gemini
+from agent.utils.stream_llm import call_llm, call_gemini
 from agent.utils.permission_manager import permission_manager
 from agent.function_nodes.web_search import WebSearchNode
 from agent.function_nodes.firecrawl_scrape import FirecrawlScrapeNode

@@ -6,8 +6,7 @@ import pytest
 import json
 import os
 from unittest.mock import Mock, patch, MagicMock
-from agent.utils.stream_llm import call_llm
-from agent.utils.gemini_llm import call_gemini
+from agent.utils.stream_llm import call_llm, call_gemini
 from agent.utils.node_registry import node_registry, NodeCategory, PermissionLevel
 from agent.utils.workflow_store import workflow_store, WorkflowMetadata
 from agent.utils.permission_manager import permission_manager, PermissionRequest
