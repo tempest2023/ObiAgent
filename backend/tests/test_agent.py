@@ -8,6 +8,7 @@ a flight booking request and showing the workflow design and execution.
 
 import asyncio
 import json
+import pytest
 from agent.flow import create_general_agent_flow
 from agent.utils.node_registry import node_registry
 from agent.utils.workflow_store import workflow_store
@@ -29,6 +30,7 @@ class MockWebSocket:
         """Get all sent messages"""
         return self.messages
 
+@pytest.mark.asyncio
 async def test_flight_booking():
     """Test the flight booking workflow"""
     print("🚀 Testing PocketFlow General Agent System")
@@ -92,6 +94,7 @@ async def test_flight_booking():
     print(f"Completed Requests: {perm_stats['completed_requests']}")
     print(f"Success Rate: {perm_stats['success_rate']:.2%}")
 
+@pytest.mark.asyncio
 async def test_node_registry():
     """Test the node registry functionality"""
     print("\n🔧 Testing Node Registry")
@@ -114,6 +117,7 @@ async def test_node_registry():
     for node in relevant_nodes[:3]:  # Show first 3
         print(f"  - {node.name}: {node.description}")
 
+@pytest.mark.asyncio
 async def test_workflow_store():
     """Test the workflow store functionality"""
     print("\n💾 Testing Workflow Store")

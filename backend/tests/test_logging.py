@@ -3,6 +3,7 @@
 
 import asyncio
 import logging
+import pytest
 from agent.flow import create_general_agent_flow
 
 def test_logging_levels():
@@ -38,6 +39,7 @@ def test_logging_levels():
     logger.warning("This warning message should not appear")
     logger.error("This error message should appear")
 
+@pytest.mark.asyncio
 async def test_workflow_logging():
     """Test workflow execution with logging"""
     
