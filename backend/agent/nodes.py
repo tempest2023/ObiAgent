@@ -18,6 +18,7 @@ from .utils.stream_llm import stream_llm, call_llm
 from .utils.node_registry import node_registry
 from .utils.workflow_store import workflow_store
 from .utils.permission_manager import permission_manager
+from .utils.node_loader import node_loader
 from agent.function_nodes.web_search import WebSearchNode
 from agent.function_nodes.analyze_results import AnalyzeResultsNode
 from agent.function_nodes.flight_search import FlightSearchNode

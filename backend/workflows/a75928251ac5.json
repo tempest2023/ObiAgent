@@ -1,0 +1,94 @@
+{
+  "metadata": {
+    "id": "a75928251ac5",
+    "name": "Workflow for: Help book a flight ticket from Los Angeles to Shan...",
+    "description": "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.",
+    "question_pattern": "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.",
+    "nodes_used": [
+      "flight_search",
+      "cost_analysis",
+      "user_query",
+      "flight_booking"
+    ],
+    "success_rate": 1.0,
+    "created_at": "2025-06-28T12:48:21.525731",
+    "last_used": "2025-06-28T16:45:22.536247",
+    "usage_count": 7,
+    "tags": [
+      "flight_booking",
+      "cost_analysis"
+    ]
+  },
+  "nodes": [
+    {
+      "name": "flight_search",
+      "description": "Search for flight options and prices from Los Angeles to Shanghai.",
+      "inputs": [
+        "from",
+        "to",
+        "date"
+      ],
+      "outputs": [
+        "flight_search_results"
+      ],
+      "requires_permission": false
+    },
+    {
+      "name": "cost_analysis",
+      "description": "Analyze the matched flight options for cost performance.",
+      "inputs": [
+        "flight_search_results"
+      ],
+      "outputs": [
+        "cost_analysis"
+      ],
+      "requires_permission": false
+    },
+    {
+      "name": "user_query",
+      "description": "Ask the user for their preferred travel date.",
+      "inputs": [
+        "user_preferences"
+      ],
+      "outputs": [
+        "user_response"
+      ],
+      "requires_permission": false
+    },
+    {
+      "name": "flight_booking",
+      "description": "Book the selected flight ticket based on user confirmation.",
+      "inputs": [
+        "selected_flight",
+        "user_response"
+      ],
+      "outputs": [
+        "booking_confirmation"
+      ],
+      "requires_permission": true
+    }
+  ],
+  "connections": [
+    {
+      "from": "flight_search",
+      "to": "cost_analysis",
+      "action": "default"
+    },
+    {
+      "from": "cost_analysis",
+      "to": "user_query",
+      "action": "default"
+    },
+    {
+      "from": "user_query",
+      "to": "flight_booking",
+      "action": "default"
+    }
+  ],
+  "shared_store_schema": {
+    "flight_search_results": "Available flight options",
+    "cost_analysis": "Cost analysis results",
+    "user_response": "User's travel preferences",
+    "booking_confirmation": "Flight booking confirmation"
+  }
+}

@@ -1,5 +1,9 @@
-# example dockerfile
- 
+# IMPORTANT: Build this Docker image from the ObiAgent/backend directory.
+# The requirements.txt file must be present in this directory for the build to succeed.
+# Example:
+#   cd ObiAgent/backend
+#   docker build -t your-image-name .
+
 FROM python:3.11-slim
 
 # Set work directory
@@ -13,13 +17,14 @@ RUN apt-get update && apt-get install -y \
 # Copy backend code
 COPY ./agent ./agent
 COPY server.py .
+COPY ./static ./static
 
 # Copy requirements
-COPY ./agent/requirements.txt ./agent/requirements.txt
+COPY requirements.txt requirements.txt
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r ./agent/requirements.txt
+    pip install --no-cache-dir -r requirements.txt
 
 # Expose port
 EXPOSE 8000

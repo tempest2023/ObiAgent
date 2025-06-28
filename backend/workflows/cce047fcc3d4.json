@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "id": "cce047fcc3d4",
+    "name": "Workflow for: Help book a flight ticket from Los Angeles to Shan...",
+    "description": "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.",
+    "question_pattern": "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.",
+    "nodes_used": [
+      "user_query"
+    ],
+    "success_rate": 1.0,
+    "created_at": "2025-06-28T12:48:21.547598",
+    "last_used": "2025-06-28T16:45:22.555379",
+    "usage_count": 14,
+    "tags": [
+      "flight_booking",
+      "cost_analysis"
+    ]
+  },
+  "nodes": [
+    {
+      "name": "user_query",
+      "description": "Ask the user for additional information such as preferred date and passenger details.",
+      "inputs": [
+        "preferred_date",
+        "passenger_details"
+      ],
+      "outputs": [
+        "user_response"
+      ]
+    }
+  ],
+  "connections": [],
+  "shared_store_schema": {
+    "user_message": "User's original question",
+    "workflow_results": "Results from workflow execution"
+  }
+}
