@@ -79,3 +79,6 @@ htmlcov/
 
 test.ipynb
 .pytest_cache/
+
+# workflows cache data
+backend/workflows/
