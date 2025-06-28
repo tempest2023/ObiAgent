@@ -30,8 +30,8 @@ class AsyncAggregatorNode(AsyncNode):
         # Combine all batch results in order
         all_results = []
         processed = shared_storage.get('processed_numbers', {})
-        for i in range(len(processed)):
-            all_results.extend(processed[i])
+        for batch_id in sorted(processed.keys()):
+            all_results.extend(processed[batch_id])
         return all_results
     
     async def exec_async(self, prep_result):
