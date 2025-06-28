@@ -1,11 +1,8 @@
-<<<<<<< Updated upstream:backend/agent/test/test_logging.py
- 
-=======
 #!/usr/bin/env python3
 """Test script to demonstrate logging functionality"""
 
 import asyncio
-from logging_config import setup_logging, get_logger
+import logging
 from agent.flow import create_general_agent_flow
 
 def test_logging_levels():
@@ -16,8 +13,8 @@ def test_logging_levels():
     
     # Test INFO level
     print("\n📝 INFO Level Logging:")
-    setup_logging('INFO')
-    logger = get_logger('test')
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logger = logging.getLogger('test')
     
     logger.info("This is an info message")
     logger.warning("This is a warning message")
@@ -25,17 +22,17 @@ def test_logging_levels():
     
     # Test DEBUG level
     print("\n🔍 DEBUG Level Logging:")
-    setup_logging('DEBUG')
-    logger = get_logger('test')
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logger = logging.getLogger('test')
     
     logger.debug("This is a debug message")
     logger.info("This is an info message")
     logger.warning("This is a warning message")
     
-    # Test QUIET level
-    print("\n🔇 QUIET Level Logging:")
-    setup_logging('QUIET')
-    logger = get_logger('test')
+    # Test ERROR level only
+    print("\n🔇 ERROR Level Only Logging:")
+    logging.basicConfig(level=logging.ERROR, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logger = logging.getLogger('test')
     
     logger.info("This info message should not appear")
     logger.warning("This warning message should not appear")
@@ -48,8 +45,8 @@ async def test_workflow_logging():
     print("=" * 50)
     
     # Setup INFO logging for workflow test
-    setup_logging('INFO')
-    logger = get_logger('test_workflow')
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logger = logging.getLogger('test_workflow')
     
     logger.info("Starting workflow test")
     
@@ -80,5 +77,4 @@ if __name__ == "__main__":
     print("\nUsage:")
     print("  python test_logging.py                    # Test all logging levels")
     print("  LOG_LEVEL=DEBUG python test_logging.py    # Set debug logging")
-    print("  LOG_LEVEL=QUIET python test_logging.py    # Set quiet logging") 
->>>>>>> Stashed changes:backend/tests/test_logging.py
+    print("  LOG_LEVEL=ERROR python test_logging.py    # Set error-only logging")

@@ -1,6 +1,3 @@
-<<<<<<< Updated upstream:backend/agent/test/test_imports.py
- 
-=======
 #!/usr/bin/env python3
 """
 Test script to verify that all function node imports work correctly.
@@ -49,16 +46,14 @@ def test_imports():
         print("✅ WebSearchNode imported successfully")
         
         print("\n🎉 All imports successful!")
-        return True
+        assert True, "All imports completed successfully"
         
     except ImportError as e:
         print(f"❌ Import error: {e}")
-        return False
+        assert False, f"Import failed: {e}"
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
-        return False
+        assert False, f"Unexpected error: {e}"
 
 if __name__ == "__main__":
-    success = test_imports()
-    sys.exit(0 if success else 1) 
->>>>>>> Stashed changes:backend/tests/test_imports.py
+    test_imports()

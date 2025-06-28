@@ -1,6 +1,3 @@
-<<<<<<< Updated upstream:backend/agent/test/test_agent.py
- 
-=======
 #!/usr/bin/env python3
 """
 Test script for the PocketFlow General Agent System
@@ -151,5 +148,4 @@ async def main():
     print("\n🎉 All tests completed!")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
->>>>>>> Stashed changes:backend/tests/test_agent.py
+    asyncio.run(main())
