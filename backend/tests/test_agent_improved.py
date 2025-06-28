@@ -7,7 +7,7 @@ import json
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from agent.flow import create_general_agent_flow
-from agent.utils.node_registry import node_registry
+from agent.utils.node_registry import node_registry, NodeCategory, PermissionLevel
 from agent.utils.workflow_store import workflow_store
 from agent.utils.permission_manager import permission_manager
 
@@ -162,7 +162,6 @@ class TestNodeRegistry:
             print()
         
         # Get nodes by category
-        from agent.utils.node_registry import NodeCategory
         search_nodes = node_registry.get_nodes_by_category(NodeCategory.SEARCH)
         print(f"🔍 Found {len(search_nodes)} search nodes")
         assert len(search_nodes) > 0

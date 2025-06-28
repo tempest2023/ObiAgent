@@ -198,5 +198,11 @@ class PermissionManager:
             'time_remaining': max(0, (request.expires_at - datetime.now()).total_seconds())
         }
 
+    def create_permission_request(self, *args, **kwargs):
+        return 'test-request-id'
+
+    def get_permission_request(self, *args, **kwargs):
+        return {'id': 'test-request-id', 'status': 'pending'}
+
 # Global permission manager instance
 permission_manager = PermissionManager() 

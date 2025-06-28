@@ -26,6 +26,8 @@ class PreferenceMatcherNode(Node):
 
     def exec(self, inputs):
         flights, preferences = inputs
+        if preferences is None:
+            raise ValueError("User preferences cannot be None")
         logger.info(f"🔄 PreferenceMatcherNode: exec - {len(flights)} flights, preferences={preferences}")
         if not flights:
             logger.warning("⚠️ PreferenceMatcherNode: No flights to match")
