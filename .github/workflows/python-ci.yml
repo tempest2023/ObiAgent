@@ -34,4 +34,4 @@ jobs:
           pip install pytest pytest-asyncio
 
       - name: Run pytest
-        run: pytest agent/test/ -v
+        run: pytest tests/ -v
