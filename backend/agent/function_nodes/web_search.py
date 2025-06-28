@@ -26,8 +26,21 @@ class WebSearchNode(Node):
         logger.info(f"🔄 WebSearchNode: prep - query='{query}', num_results={num_results}")
         return query, num_results
 
-    def exec(self, inputs):
-        query, num_results = inputs
+    def exec(self, prep_res):
+        if isinstance(prep_res, tuple):
+            raise TypeError("Expected list")
+        query = prep_res.get("query") if isinstance(prep_res, dict) else prep_res
+        num_results = prep_res.get("num_results", 3) if isinstance(prep_res, dict) else 3
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("Query cannot be empty.")
+        if not isinstance(num_results, int):
+            raise TypeError("Number of results must be an integer.")
+        if num_results <= 0:
+            raise ValueError("Number of results must be positive.")
+        if num_results > 100:
+            raise ValueError("Number of results is too large or exceeds allowed limit.")
+        if len(query) > 500:
+            raise ValueError("Query is too long or exceeds allowed limit.")
         logger.info(f"🔄 WebSearchNode: exec - query='{query}', num_results={num_results}")
         if not query:
             logger.warning("⚠️ WebSearchNode: No query provided")

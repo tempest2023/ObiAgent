@@ -27,7 +27,8 @@ class PermissionRequestNode(Node):
         request = permission_manager.request_permission(
             permission_type="payment" if "payment" in operation.lower() else "booking",
             description=f"Permission for {operation}",
-            details={"operation": operation, "details": details}
+            details={"operation": operation, "details": details},
+            return_object=True
         )
         logger.info(f"✅ PermissionRequestNode: Created permission request {request.id}")
         return f"Permission request created: {request.id}"

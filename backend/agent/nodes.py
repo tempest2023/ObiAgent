@@ -60,7 +60,7 @@ class WorkflowDesignerNode(AsyncNode):
         
         user_message = shared.get("user_message", "")
         if not user_message:
-            raise ValueError("User message is required")
+            raise ValueError("User message is empty or invalid.")
         
         # Get relevant nodes for the question
         relevant_nodes = node_registry.get_nodes_for_question(user_message)
@@ -644,10 +644,9 @@ class StreamingChatNode(AsyncNode):
         websocket = shared.get("websocket")
         
         if not user_message:
-            raise ValueError("User message is required")
-        
+            raise ValueError("User message is empty or invalid.")
         if not websocket:
-            raise ValueError("WebSocket connection is required for streaming")
+            raise ValueError("WebSocket connection is empty or invalid.")
         
         streaming_context = {
             "user_message": user_message,

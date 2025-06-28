@@ -47,14 +47,14 @@ def call_gemini(prompt: str, model: str = "gemini-2.0-flash-001") -> str:
         str: The model's response as a string.
 
     Usage:
-        Set the GOOGLE_API_KEY environment variable before use.
+        Set the GEMINI_API_KEY environment variable before use.
         Example:
             response = call_gemini("Why is the sky blue?")
     """
     from google import genai
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY environment variable not set.")
+        raise ValueError("GEMINI_API_KEY environment variable is required")
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=model,
