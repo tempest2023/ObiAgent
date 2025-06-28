@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
 # Copy backend code
 COPY ./agent ./agent
 COPY server.py .
+COPY ./static ./static
 
 # Copy requirements
 COPY requirements.txt requirements.txt
