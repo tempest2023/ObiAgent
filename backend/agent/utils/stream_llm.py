@@ -2,7 +2,11 @@ import os
 from openai import AsyncOpenAI, OpenAI
 
 async def stream_llm(messages):
-    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", "your-api-key"))
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY environment variable is required")
+    
+    client = AsyncOpenAI(api_key=api_key)
     
     stream = await client.chat.completions.create(
         model="gpt-4o-mini",
@@ -15,8 +19,15 @@ async def stream_llm(messages):
         if chunk.choices[0].delta.content is not None:
             yield chunk.choices[0].delta.content
 
-def call_llm(prompt):    
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "your-api-key"))
+def call_llm(prompt):
+    if not prompt:
+        raise ValueError("Prompt cannot be empty")
+    
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY environment variable is required")
+    
+    client = OpenAI(api_key=api_key)
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],

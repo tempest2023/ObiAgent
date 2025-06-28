@@ -6,7 +6,7 @@ import pytest
 import json
 import os
 from unittest.mock import Mock, patch, MagicMock
-from agent.utils.stream_llm import call_openai_stream
+from agent.utils.stream_llm import call_llm
 from agent.utils.gemini_llm import call_gemini
 from agent.utils.node_registry import node_registry, NodeCategory, PermissionLevel
 from agent.utils.workflow_store import workflow_store, WorkflowMetadata
@@ -21,7 +21,7 @@ class TestStreamLLM:
         monkeypatch.setenv("OPENAI_API_KEY", "test_key")
         
         with patch('openai.OpenAI', return_value=mock_openai_client):
-            result = call_openai_stream("Test prompt")
+            result = call_llm("Test prompt")
             
             # Should return a response
             assert result is not None
@@ -32,7 +32,7 @@ class TestStreamLLM:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         
         with pytest.raises(ValueError, match="OPENAI_API_KEY environment variable is required"):
-            call_openai_stream("Test prompt")
+            call_llm("Test prompt")
     
     def test_api_error_handling(self, monkeypatch):
         """Test handling of API errors"""
@@ -43,7 +43,7 @@ class TestStreamLLM:
         
         with patch('openai.OpenAI', return_value=mock_client):
             with pytest.raises(Exception, match="API Error"):
-                call_openai_stream("Test prompt")
+                call_llm("Test prompt")
     
     def test_empty_prompt(self, mock_openai_client, monkeypatch):
         """Test handling of empty prompt"""
@@ -51,7 +51,7 @@ class TestStreamLLM:
         
         with patch('openai.OpenAI', return_value=mock_openai_client):
             with pytest.raises(ValueError, match="Prompt cannot be empty"):
-                call_openai_stream("")
+                call_llm("")
 
 class TestGeminiLLM:
     """Test Gemini LLM functionality"""
