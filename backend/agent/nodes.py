@@ -32,483 +32,190 @@ from agent.function_nodes.data_formatter import DataFormatterNode
 logger = logging.getLogger(__name__)
 
 class UserResponseRequiredException(Exception):
-    """Exception raised when a workflow needs user input to continue"""
+    """Exception raised when a node requires user response"""
+    
     def __init__(self, node_name: str, question: str, node_index: int):
         self.node_name = node_name
         self.question = question
         self.node_index = node_index
-        super().__init__(f"User response required for node {node_name} at index {node_index}")
-
-class UserResponseRequiredException(Exception):
-    """Exception raised when a workflow needs user input to continue"""
-    def __init__(self, node_name: str, question: str, node_index: int):
-        self.node_name = node_name
-        self.question = question
-        self.node_index = node_index
-        super().__init__(f"User response required for node {node_name} at index {node_index}")
+        super().__init__(f"User response required for node {node_name}")
 
 class WorkflowDesignerNode(AsyncNode):
     """
-    Node that analyzes user questions and designs workflows.
+    Node that designs workflows based on user questions.
     Example:
         >>> node = WorkflowDesignerNode()
-        >>> shared = {"user_message": "Book a flight from LA to Shanghai"}
+        >>> shared = {"user_message": "Book a flight from LA to NY"}
         >>> await node.prep_async(shared)
-        # Returns context for LLM to design a workflow
-    """
-    """
-    Node that analyzes user questions and designs workflows.
-    Example:
-        >>> node = WorkflowDesignerNode()
-        >>> shared = {"user_message": "Book a flight from LA to Shanghai"}
-        >>> await node.prep_async(shared)
-        # Returns context for LLM to design a workflow
+        # Prepares workflow design context
+        >>> result = await node.exec_async(prep_res)
+        # Returns workflow design
+        >>> action = await node.post_async(shared, prep_res, result)
+        # Stores workflow design in shared store
     """
     
     async def prep_async(self, shared):
+        """Prepare workflow design context"""
         logger.info("🔄 WorkflowDesignerNode: Starting prep_async")
         
-        # Ensure shared is a dictionary
-        if not isinstance(shared, dict):
-            shared = {}
-            logger.warning("WorkflowDesignerNode: shared parameter is not a dictionary, using empty dict")
+        user_message = shared.get("user_message", "")
+        if not user_message:
+            raise ValueError("User message is required")
         
-        user_question = shared.get("user_message", "")
-        conversation_history = shared.get("conversation_history", [])
-        websocket = shared.get("websocket")
+        # Get relevant nodes for the question
+        relevant_nodes = node_registry.get_nodes_for_question(user_message)
         
-        logger.info(f"📝 WorkflowDesignerNode: Processing question: {user_question[:50]}...")
-        logger.info(f"💬 WorkflowDesignerNode: Conversation history length: {len(conversation_history)}")
-        
-        # Get available nodes and similar workflows
-        available_nodes = node_registry.to_dict()
-        similar_workflows = workflow_store.find_similar_workflows(user_question, limit=3)
-        
-        logger.info(f"🔧 WorkflowDesignerNode: Found {len(available_nodes.get('nodes', {}))} available nodes")
-        logger.info(f"💾 WorkflowDesignerNode: Found {len(similar_workflows)} similar workflows")
-        
-        result = {
-            "user_question": user_question,
-            "conversation_history": conversation_history,
-            "websocket": websocket,
-            "available_nodes": available_nodes,
-            "similar_workflows": similar_workflows
+        # Create workflow design context
+        workflow_context = {
+            "user_message": user_message,
+            "relevant_nodes": [node.name for node in relevant_nodes],
+            "node_details": [
+                {
+                    "name": node.name,
+                    "description": node.description,
+                    "category": node.category.value,
+                    "permission_level": node.permission_level.value
+                }
+                for node in relevant_nodes
+            ]
         }
         
+        logger.info(f"📋 WorkflowDesignerNode: Found {len(relevant_nodes)} relevant nodes")
         logger.info("✅ WorkflowDesignerNode: prep_async completed")
-        return result
+        return workflow_context
     
     async def exec_async(self, prep_res):
+        """Design workflow based on user question"""
         logger.info("🔄 WorkflowDesignerNode: Starting exec_async")
         
-        user_question = prep_res["user_question"]
-        available_nodes = prep_res["available_nodes"]
-        similar_workflows = prep_res["similar_workflows"]
+        user_message = prep_res["user_message"]
+        relevant_nodes = prep_res["relevant_nodes"]
         
-        logger.info(f"🤖 WorkflowDesignerNode: Calling LLM to design workflow for: {user_question[:50]}...")
-        
-        # Create prompt for workflow design
-        prompt = f"""
-You are a workflow designer agent. Your task is to analyze the user's question and design a workflow to solve it.
-
-USER QUESTION: {user_question}
-
-AVAILABLE NODES:
-{json.dumps(available_nodes, indent=2)}
-
-SIMILAR WORKFLOWS (for reference):
-{json.dumps([{
-    'description': w.metadata.description,
-    'nodes_used': w.metadata.nodes_used,
-    'success_rate': w.metadata.success_rate
-} for w in similar_workflows], indent=2)}
-
-Design a workflow to solve the user's question. Consider:
-1. What information do we need to gather?
-2. What analysis or processing is required?
-3. What actions need user permission?
-4. How can we present the results?
-
-Return your response in YAML format:
-
-```yaml
-thinking: |
-    <your step-by-step reasoning about how to solve this problem>
-
-workflow:
-  name: <workflow name>
-  description: <brief description>
-  nodes:
-    - name: <node_name>
-      description: <what this node does>
-      inputs: <list of inputs>
-      outputs: <list of outputs>
-      requires_permission: <true/false>
-    - name: <node_name>
-      ...
-  
-  connections:
-    - from: <node_name>
-      to: <node_name>
-      action: <action_name>
-    - from: <node_name>
-      to: <node_name>
-      action: <action_name>
-  
-  shared_store_schema:
-    <key>: <description>
-    <key>: <description>
-
-estimated_steps: <number of steps>
-requires_user_input: <true/false>
-requires_permission: <true/false>
-```
-
-IMPORTANT: Use only the available nodes listed above. If you need a node that doesn't exist, use the closest available one or ask for user input.
-"""
-        
-        # Get workflow design from LLM
-        response = call_llm(prompt)
-        logger.info("🤖 WorkflowDesignerNode: Received LLM response")
-        
-        # Parse YAML response with error handling
-        try:
-            yaml_str = response.split("```yaml")[1].split("```")[0].strip()
-            workflow_design = yaml.safe_load(yaml_str)
-            logger.info("✅ WorkflowDesignerNode: Successfully parsed YAML response")
-        except (IndexError, yaml.YAMLError) as e:
-            logger.error(f"❌ WorkflowDesignerNode: Failed to parse YAML response: {e}")
-            logger.error(f"📄 WorkflowDesignerNode: Raw response: {response}")
-            # Create a fallback workflow design
-            workflow_design = {
-                "thinking": "Failed to parse LLM response, using fallback workflow",
-                "workflow": {
-                    "name": "Fallback Workflow",
-                    "description": "A simple fallback workflow",
-                    "nodes": [
-                        {
-                            "name": "user_query",
-                            "description": "Ask user for more information",
-                            "inputs": ["user_message"],
-                            "outputs": ["clarified_question"],
-                            "requires_permission": False
-                        }
-                    ],
-                    "connections": [],
-                    "shared_store_schema": {
-                        "user_message": "User's original question",
-                        "clarified_question": "Clarified question from user"
-                    }
-                },
-                "estimated_steps": 1,
-                "requires_user_input": True,
-                "requires_permission": False
+        # Create workflow design
+        workflow_design = {
+            "workflow": {
+                "name": f"Workflow for: {user_message[:50]}...",
+                "description": f"Automated workflow to handle: {user_message}",
+                "nodes": relevant_nodes,
+                "connections": self._create_connections(relevant_nodes),
+                "shared_store_schema": self._create_schema(relevant_nodes),
+                "estimated_steps": len(relevant_nodes),
+                "requires_permission": self._check_permission_requirements(relevant_nodes)
+            },
+            "execution_order": relevant_nodes,
+            "metadata": {
+                "created_at": "2024-01-01T00:00:00Z",
+                "version": "1.0",
+                "tags": self._extract_tags(user_message)
             }
-            logger.info("🔄 WorkflowDesignerNode: Using fallback workflow design")
+        }
         
-        logger.info(f"🎯 WorkflowDesignerNode: Designed workflow '{workflow_design.get('workflow', {}).get('name', 'Unknown')}' with {workflow_design.get('estimated_steps', 0)} steps")
+        logger.info(f"🎯 WorkflowDesignerNode: Created workflow with {len(relevant_nodes)} nodes")
         logger.info("✅ WorkflowDesignerNode: exec_async completed")
         return workflow_design
     
+    def _create_connections(self, nodes):
+        """Create connections between nodes"""
+        connections = []
+        for i in range(len(nodes) - 1):
+            connections.append({
+                "from": nodes[i],
+                "to": nodes[i + 1],
+                "condition": "default"
+            })
+        return connections
+    
+    def _create_schema(self, nodes):
+        """Create shared store schema based on nodes"""
+        schema = {
+            "user_message": "User's original question",
+            "workflow_results": "Results from workflow execution"
+        }
+        
+        # Add node-specific schemas
+        for node_name in nodes:
+            schema[f"{node_name}_result"] = f"Result from {node_name} node"
+        
+        return schema
+    
+    def _check_permission_requirements(self, nodes):
+        """Check if workflow requires permissions"""
+        for node_name in nodes:
+            node_metadata = node_registry.get_node(node_name)
+            if node_metadata and node_metadata.permission_level.value in ["MEDIUM", "HIGH"]:
+                return True
+        return False
+    
+    def _extract_tags(self, user_message):
+        """Extract tags from user message"""
+        tags = []
+        message_lower = user_message.lower()
+        
+        if any(word in message_lower for word in ["flight", "book", "airline", "ticket"]):
+            tags.append("flight_booking")
+        if any(word in message_lower for word in ["search", "find", "look"]):
+            tags.append("search")
+        if any(word in message_lower for word in ["cost", "price", "budget"]):
+            tags.append("cost_analysis")
+        if any(word in message_lower for word in ["payment", "pay", "money"]):
+            tags.append("payment")
+        
+        return tags
+    
     async def post_async(self, shared, prep_res, exec_res):
+        """Store workflow design in shared store"""
         logger.info("🔄 WorkflowDesignerNode: Starting post_async")
         
-        # Store the workflow design
+        # Store workflow design
         shared["workflow_design"] = exec_res
-        shared["current_workflow"] = exec_res
         
-        logger.info(f"💾 WorkflowDesignerNode: Stored workflow design in shared store")
-        
-        # Send workflow design to user
-        websocket = prep_res["websocket"]
-        if websocket:
-            try:
-                await websocket.send_text(json.dumps({
-                    "type": "workflow_design",
-                    "content": exec_res
-                }))
-                logger.info("📤 WorkflowDesignerNode: Sent workflow design to websocket")
-            except Exception as e:
-                logger.error(f"❌ WorkflowDesignerNode: Failed to send workflow design to websocket: {e}")
-        else:
-            logger.warning("⚠️ WorkflowDesignerNode: No websocket available to send workflow design")
-        
-        logger.info("✅ WorkflowDesignerNode: post_async completed, returning 'execute_workflow'")
-        return "execute_workflow"
+        logger.info("💾 WorkflowDesignerNode: Stored workflow design in shared store")
+        logger.info("✅ WorkflowDesignerNode: post_async completed, returning 'default'")
+        return "default"
 
 class WorkflowExecutorNode(AsyncNode):
     """
-    Node that executes the designed workflow step by step.
+    Node that executes workflows.
     Example:
         >>> node = WorkflowExecutorNode()
-        >>> shared = {"workflow_design": <workflow_dict>}
+        >>> shared = {"workflow_design": {...}, "websocket": ws}
         >>> await node.prep_async(shared)
         # Prepares execution context
-        >>> await node.exec_async(prep_res)
-        # Executes workflow nodes in order
-    """
-    
-    node_class_map = {
-        "web_search": WebSearchNode,
-        "analyze_results": AnalyzeResultsNode,
-        "flight_search": FlightSearchNode,
-        "cost_analysis": CostAnalysisNode,
-        "result_summarizer": ResultSummarizerNode,
-        "user_query": UserQueryNode,
-        "permission_request": PermissionRequestNode,
-        "data_formatter": DataFormatterNode,
-    }
-
-    """
-    Node that executes the designed workflow step by step.
-    Example:
-        >>> node = WorkflowExecutorNode()
-        >>> shared = {"workflow_design": <workflow_dict>}
-        >>> await node.prep_async(shared)
-        # Prepares execution context
-        >>> await node.exec_async(prep_res)
-        # Executes workflow nodes in order
+        >>> result = await node.exec_async(prep_res)
+        # Returns execution results
+        >>> action = await node.post_async(shared, prep_res, result)
+        # Stores results in shared store
     """
     
     async def prep_async(self, shared):
+        """Prepare workflow execution context"""
         logger.info("🔄 WorkflowExecutorNode: Starting prep_async")
         
-        # Ensure shared is a dictionary
-        if not isinstance(shared, dict):
-            shared = {}
-            logger.warning("WorkflowExecutorNode: shared parameter is not a dictionary, using empty dict")
-        
         workflow_design = shared.get("workflow_design")
-        websocket = shared.get("websocket")
-        
         if not workflow_design:
-            logger.error("❌ WorkflowExecutorNode: No workflow design found")
-            raise ValueError("No workflow design found")
+            raise ValueError("Workflow design is required")
         
-        logger.info(f"📋 WorkflowExecutorNode: Found workflow design: {workflow_design.get('workflow', {}).get('name', 'Unknown')}")
-        logger.info(f"🔧 WorkflowExecutorNode: Workflow has {len(workflow_design.get('workflow', {}).get('nodes', []))} nodes")
+        execution_order = workflow_design.get("execution_order", [])
+        if not execution_order:
+            raise ValueError("Execution order is required")
         
-        result = {
-            "workflow_design": workflow_design,
-            "websocket": websocket,
-            "shared": shared
-        }
-        
+        logger.info(f"📋 WorkflowExecutorNode: Prepared execution for {len(execution_order)} nodes")
         logger.info("✅ WorkflowExecutorNode: prep_async completed")
-        return result
+        return {"execution_order": execution_order, "workflow_design": workflow_design}
     
     async def exec_async(self, prep_res):
+        """Execute workflow nodes"""
         logger.info("🔄 WorkflowExecutorNode: Starting exec_async")
         
+        execution_order = prep_res["execution_order"]
         workflow_design = prep_res["workflow_design"]
-        websocket = prep_res["websocket"]
-        shared = prep_res["shared"]
-        nodes = workflow_design["workflow"]["nodes"]
-        execution_order = [node["name"] for node in nodes]
+        websocket = workflow_design.get("websocket")
         
-        # 检查是否需要从特定节点继续执行
-        start_index = shared.get("current_node_index", 0)
-        if start_index > 0:
-            logger.info(f"🔄 WorkflowExecutorNode: Resuming from node index {start_index}")
-        
-        logger.info(f"🚀 WorkflowExecutorNode: Starting execution of {len(nodes)} nodes from index {start_index}")
-        execution_order = [node["name"] for node in nodes]
-        
-        # 检查是否需要从特定节点继续执行
-        start_index = shared.get("current_node_index", 0)
-        if start_index > 0:
-            logger.info(f"🔄 WorkflowExecutorNode: Resuming from node index {start_index}")
-        
-        logger.info(f"🚀 WorkflowExecutorNode: Starting execution of {len(nodes)} nodes from index {start_index}")
-        logger.info(f"📋 WorkflowExecutorNode: Execution order: {execution_order}")
         results = {}
         
         for i, node_name in enumerate(execution_order):
-            # 如果从特定索引开始，跳过之前的节点
-            if i < start_index:
-                logger.info(f"⏭️ WorkflowExecutorNode: Skipping node {i}: {node_name}")
-                continue
-                
-            # 如果从特定索引开始，跳过之前的节点
-            if i < start_index:
-                logger.info(f"⏭️ WorkflowExecutorNode: Skipping node {i}: {node_name}")
-                continue
-                
-            node_config = next(n for n in nodes if n["name"] == node_name)
-            logger.info(f"⚡ WorkflowExecutorNode: Executing node {i+1}/{len(execution_order)}: {node_name}")
-            logger.info(f"📝 WorkflowExecutorNode: Node description: {node_config.get('description', 'No description')}")
+            logger.info(f"🔄 WorkflowExecutorNode: Executing node {i+1}/{len(execution_order)}: {node_name}")
             
-            # --- BEGIN PATCH: user_query question improvement ---
-            if node_name == "user_query":
-                # Try to generate a meaningful question
-                question = None
-                # Prefer explicit question in node_config
-                if "question" in node_config and node_config["question"]:
-                    question = node_config["question"]
-                # Otherwise, use description to form a question
-                elif node_config.get("description"):
-                    question = node_config["description"]
-                # If still no question, try to compose from inputs
-                elif node_config.get("inputs"):
-                    # Compose a question from inputs
-                    inputs = node_config["inputs"]
-                    if isinstance(inputs, list) and len(inputs) > 0:
-                        question = f"Please provide the following information: {', '.join(inputs)}"
-                
-                # If no meaningful question found, raise an error
-                if not question:
-                    raise ValueError(f"UserQueryNode '{node_name}' has no meaningful question. Node config: {node_config}")
-                
-                shared["question"] = question
-                logger.info(f"🔧 WorkflowExecutorNode: Set question for user_query node: '{question}'")
-            # --- END PATCH ---
-
-            # --- BEGIN PATCH: user_query question improvement ---
-            if node_name == "user_query":
-                # Try to generate a meaningful question
-                question = None
-                # Prefer explicit question in node_config
-                if "question" in node_config and node_config["question"]:
-                    question = node_config["question"]
-                # Otherwise, use description to form a question
-                elif node_config.get("description"):
-                    question = node_config["description"]
-                # If still no question, try to compose from inputs
-                elif node_config.get("inputs"):
-                    # Compose a question from inputs
-                    inputs = node_config["inputs"]
-                    if isinstance(inputs, list) and len(inputs) > 0:
-                        question = f"Please provide the following information: {', '.join(inputs)}"
-                # If no meaningful question found, raise an error
-                if not question:
-                    raise ValueError(f"UserQueryNode '{node_name}' has no meaningful question. Node config: {node_config}")
-                shared["question"] = question
-                logger.info(f"🔧 WorkflowExecutorNode: Set question for user_query node: '{question}'")
-            # --- END PATCH ---
-
-            # --- BEGIN PATCH: web_search query auto-fill ---
-            if node_name == "web_search":
-                if not shared.get("query"):
-                    # 优先用 shared["user_message"]
-                    if shared.get("user_message"):
-                        shared["query"] = shared["user_message"]
-                    # 其次用 workflow_design["user_question"]
-                    elif workflow_design.get("user_question"):
-                        shared["query"] = workflow_design["user_question"]
-                    # 兼容 workflow 节点 inputs 字段
-                    elif node_config.get("inputs"):
-                        for input_key in node_config["inputs"]:
-                            if shared.get(input_key):
-                                shared["query"] = shared[input_key]
-                                break
-                logger.info(f"🔧 WorkflowExecutorNode: Set query for web_search node: '{shared.get('query')}'")
-            # --- END PATCH ---
-
-            if websocket:
-                try:
-                    await websocket.send_text(json.dumps({
-                        "type": "workflow_progress",
-                        "content": {
-                            "current_node": node_name,
-                            "description": node_config["description"],
-                            "progress": f"{i+1}/{len(execution_order)}"
-                        }
-                    }))
-                    logger.info(f"📤 WorkflowExecutorNode: Sent progress update for {node_name}")
-                except Exception as e:
-                    logger.error(f"❌ WorkflowExecutorNode: Failed to send progress update: {e}")
-            
-            try:
-                # Use real function node
-                node_cls = self.node_class_map.get(node_name)
-                if node_cls is None:
-                    logger.warning(f"⚠️ WorkflowExecutorNode: No implementation found for {node_name}, returning mock result")
-                    result = f"Mock result for {node_name}"
-                else:
-                    node = node_cls()
-                    prep_res_node = node.prep(shared)
-                    result = node.exec(prep_res_node)
-                    action = node.post(shared, prep_res_node, result)
-                    
-                    # Special handling for user_query node
-                    if node_name == "user_query" and action == "wait_for_response":
-                        logger.info("⏳ WorkflowExecutorNode: User query node requires response, pausing execution")
-                        
-                        # Send question to user via websocket
-                        if websocket:
-                            try:
-                                await websocket.send_text(json.dumps({
-                                    "type": "user_question",
-                                    "content": {
-                                        "question": prep_res_node,
-                                        "requires_response": True
-                                    }
-                                }))
-                                logger.info("📤 WorkflowExecutorNode: Sent user question via websocket")
-                            except Exception as e:
-                                logger.error(f"❌ WorkflowExecutorNode: Failed to send user question: {e}")
-                        
-                        # Check if this is a demo environment (DemoWebSocket)
-                        is_demo = hasattr(websocket, 'get_auto_response')
-                        
-                        if is_demo:
-                            logger.info("🎭 WorkflowExecutorNode: Demo environment detected, using auto-response")
-                            # Get auto response from demo websocket
-                            auto_response = websocket.get_auto_response(prep_res_node)
-                            shared["user_response"] = auto_response
-                            shared["waiting_for_user_response"] = False
-                            logger.info(f"🤖 WorkflowExecutorNode: Auto response: {auto_response[:50]}...")
-                        else:
-                            # 在生产环境中，我们暂停执行并等待服务器重新启动流程
-                            logger.info("⏸️ WorkflowExecutorNode: Pausing execution, waiting for server to resume")
-                            shared["waiting_for_user_response"] = True
-                            shared["current_node_index"] = i  # 保存当前节点索引
-                            shared["current_node_name"] = node_name
-                            
-                            # 抛出特殊异常来暂停执行
-                            raise UserResponseRequiredException(
-                                node_name=node_name,
-                                question=prep_res_node,
-                                node_index=i
-                            )
-                        
-                        # Get the user response
-                        user_response = shared.get("user_response", "")
-                        logger.info(f"✅ WorkflowExecutorNode: Received user response: {user_response[:50]}...")
-                        
-                        # Update the result with user response
-                        result = user_response
-                        shared[f"{node_name}_result"] = user_response
-                        
-                        # Clear the waiting flag
-                        shared["waiting_for_user_response"] = False
-                        shared["user_response"] = None
-                    
-                    # Special handling for permission_request node
-                    elif node_name == "permission_request" and action == "wait_for_permission":
-                        logger.info("⏳ WorkflowExecutorNode: Permission request node requires response, pausing execution")
-                        
-                        # Wait for permission response
-                        waiting_logged = False
-                        while shared.get("waiting_for_permission", False):
-                            if not waiting_logged:
-                                logger.info("⏳ WorkflowExecutorNode: Waiting for permission response...")
-                                waiting_logged = True
-                            await asyncio.sleep(0.1)
-                        
-                        # Get the permission response
-                        permission_response = shared.get("permission_response", {})
-                        logger.info(f"✅ WorkflowExecutorNode: Received permission response: {permission_response}")
-                        
-                        # Update the result with permission response
-                        result = permission_response
-                        shared[f"{node_name}_result"] = permission_response
-                        
-                        # Clear the waiting flag
-                        shared["waiting_for_permission"] = False
-                        shared["permission_response"] = None
-                
-                results[node_name] = result
             try:
                 # Get node metadata from registry
                 node_metadata = node_registry.get_node(node_name)
@@ -560,13 +267,13 @@ class WorkflowExecutorNode(AsyncNode):
                                 shared["waiting_for_user_response"] = False
                                 logger.info(f"🤖 WorkflowExecutorNode: Auto response: {auto_response[:50]}...")
                             else:
-                                # 在生产环境中，我们暂停执行并等待服务器重新启动流程
+                                # In production, pause execution and wait for server to resume
                                 logger.info("⏸️ WorkflowExecutorNode: Pausing execution, waiting for server to resume")
                                 shared["waiting_for_user_response"] = True
-                                shared["current_node_index"] = i  # 保存当前节点索引
+                                shared["current_node_index"] = i  # Save current node index
                                 shared["current_node_name"] = node_name
                                 
-                                # 抛出特殊异常来暂停执行
+                                # Raise special exception to pause execution
                                 raise UserResponseRequiredException(
                                     node_name=node_name,
                                     question=prep_res_node,
@@ -626,20 +333,12 @@ class WorkflowExecutorNode(AsyncNode):
                         logger.error(f"❌ WorkflowExecutorNode: Failed to send completion message: {e}")
                         
             except UserResponseRequiredException as e:
-                # 这是预期的异常，用于暂停执行
+                # This is an expected exception to pause execution
                 logger.info(f"⏸️ WorkflowExecutorNode: Paused for user response: {e}")
-                # 清除当前节点索引，因为我们已经处理了这个异常
+                # Clear current node index since we've handled this exception
                 shared.pop("current_node_index", None)
                 shared.pop("current_node_name", None)
-                raise  # 重新抛出异常，让上层处理
-                        
-            except UserResponseRequiredException as e:
-                # 这是预期的异常，用于暂停执行
-                logger.info(f"⏸️ WorkflowExecutorNode: Paused for user response: {e}")
-                # 清除当前节点索引，因为我们已经处理了这个异常
-                shared.pop("current_node_index", None)
-                shared.pop("current_node_name", None)
-                raise  # 重新抛出异常，让上层处理
+                raise  # Re-raise exception for upper layer to handle
                 
             except Exception as e:
                 logger.error(f"❌ WorkflowExecutorNode: Node {node_name} failed with error: {e}")
@@ -707,404 +406,395 @@ class UserInteractionNode(AsyncNode):
         >>> shared = {"pending_user_question": "What is your budget?", "websocket": ws}
         >>> await node.prep_async(shared)
         # Prepares interaction context
-        >>> await node.exec_async(prep_res)
-        # Sends question to user via websocket
-    """
-    """
-    Node that handles user interactions and responses (questions, permissions).
-    Example:
-        >>> node = UserInteractionNode()
-        >>> shared = {"pending_user_question": "What is your budget?", "websocket": ws}
-        >>> await node.prep_async(shared)
-        # Prepares interaction context
-        >>> await node.exec_async(prep_res)
-        # Sends question to user via websocket
+        >>> result = await node.exec_async(prep_res)
+        # Returns interaction result
+        >>> action = await node.post_async(shared, prep_res, result)
+        # Stores interaction result in shared store
     """
     
     async def prep_async(self, shared):
+        """Prepare user interaction context"""
         logger.info("🔄 UserInteractionNode: Starting prep_async")
         
-        # Ensure shared is a dictionary
-        if not isinstance(shared, dict):
-            shared = {}
-            logger.warning("UserInteractionNode: shared parameter is not a dictionary, using empty dict")
-        
-        websocket = shared.get("websocket")
+        # Check for pending user questions or permission requests
         pending_question = shared.get("pending_user_question")
         pending_permission = shared.get("pending_permission_request")
         
-        logger.info(f"❓ UserInteractionNode: Pending question: {pending_question is not None}")
-        logger.info(f"🔐 UserInteractionNode: Pending permission: {pending_permission is not None}")
+        if not pending_question and not pending_permission:
+            raise ValueError("No pending user interaction found")
         
-        result = {
-            "websocket": websocket,
-            "pending_question": pending_question,
-            "pending_permission": pending_permission
+        interaction_context = {
+            "type": "question" if pending_question else "permission",
+            "content": pending_question or pending_permission,
+            "websocket": shared.get("websocket")
         }
         
+        logger.info(f"📋 UserInteractionNode: Prepared {interaction_context['type']} interaction")
         logger.info("✅ UserInteractionNode: prep_async completed")
-        return result
+        return interaction_context
     
     async def exec_async(self, prep_res):
+        """Handle user interaction"""
         logger.info("🔄 UserInteractionNode: Starting exec_async")
         
+        interaction_type = prep_res["type"]
+        content = prep_res["content"]
         websocket = prep_res["websocket"]
-        pending_question = prep_res["pending_question"]
-        pending_permission = prep_res["pending_permission"]
         
-        if pending_question:
-            logger.info(f"❓ UserInteractionNode: Sending question to user: {pending_question[:50]}...")
+        if interaction_type == "question":
+            # Handle user question
+            logger.info("❓ UserInteractionNode: Processing user question")
+            
             # Send question to user
             if websocket:
                 try:
                     await websocket.send_text(json.dumps({
                         "type": "user_question",
                         "content": {
-                            "question": pending_question,
+                            "question": content,
                             "requires_response": True
                         }
                     }))
-                    logger.info("📤 UserInteractionNode: Sent question to websocket")
+                    logger.info("📤 UserInteractionNode: Sent question to user")
                 except Exception as e:
                     logger.error(f"❌ UserInteractionNode: Failed to send question: {e}")
             
-            # Wait for user response (in real implementation, this would be handled differently)
-            result = {"type": "question", "question": pending_question}
-            logger.info("✅ UserInteractionNode: Question sent, waiting for response")
-            return result
-        
-        elif pending_permission:
-            logger.info(f"🔐 UserInteractionNode: Processing permission request: {pending_permission}")
+            # Wait for response (in demo mode, use auto-response)
+            if hasattr(websocket, 'get_auto_response'):
+                response = websocket.get_auto_response(content)
+                logger.info(f"🤖 UserInteractionNode: Auto response: {response[:50]}...")
+            else:
+                # In production, this would wait for actual user response
+                response = "User response placeholder"
+                logger.info("⏳ UserInteractionNode: Waiting for user response...")
+            
+            result = {
+                "type": "question_response",
+                "question": content,
+                "response": response
+            }
+            
+        else:  # permission
+            # Handle permission request
+            logger.info("🔐 UserInteractionNode: Processing permission request")
+            
             # Send permission request to user
-            request = permission_manager.get_request(pending_permission)
-            if request:
-                formatted_request = permission_manager.format_permission_request_for_user(request)
-                if websocket:
-                    try:
-                        await websocket.send_text(json.dumps({
-                            "type": "permission_request",
-                            "content": formatted_request
-                        }))
-                        logger.info("📤 UserInteractionNode: Sent permission request to websocket")
-                    except Exception as e:
-                        logger.error(f"❌ UserInteractionNode: Failed to send permission request: {e}")
-                result = {"type": "permission", "request_id": pending_permission}
-                logger.info("✅ UserInteractionNode: Permission request sent")
-                return result
-        
-        logger.info("✅ UserInteractionNode: No pending interactions")
-        return {"type": "none"}
-    
-    async def post_async(self, shared, prep_res, exec_res):
-        logger.info("🔄 UserInteractionNode: Starting post_async")
-        
-        interaction_type = exec_res["type"]
-        logger.info(f"🔄 UserInteractionNode: Processing interaction type: {interaction_type}")
-        
-        if interaction_type == "question":
-            # Store that we're waiting for user response
-            shared["waiting_for_user_response"] = True
-            logger.info("✅ UserInteractionNode: Set waiting_for_user_response flag")
-            return "wait_for_response"
-        
-        elif interaction_type == "permission":
-            # Store that we're waiting for permission
-            shared["waiting_for_permission"] = True
-            logger.info("✅ UserInteractionNode: Set waiting_for_permission flag")
-            return "wait_for_permission"
-        
-        logger.info("✅ UserInteractionNode: Continuing workflow")
-        return "continue_workflow"
-
-class WorkflowOptimizerNode(AsyncNode):
-    """
-    Node that optimizes workflows based on results and user feedback.
-    Example:
-        >>> node = WorkflowOptimizerNode()
-        >>> shared = {"workflow_results": {...}, "user_feedback": "Not good"}
-        >>> await node.prep_async(shared)
-        # Prepares optimization context
-        >>> await node.exec_async(prep_res)
-        # Suggests improvements if needed
-    """
-    """
-    Node that optimizes workflows based on results and user feedback.
-    Example:
-        >>> node = WorkflowOptimizerNode()
-        >>> shared = {"workflow_results": {...}, "user_feedback": "Not good"}
-        >>> await node.prep_async(shared)
-        # Prepares optimization context
-        >>> await node.exec_async(prep_res)
-        # Suggests improvements if needed
-    """
-    
-    async def prep_async(self, shared):
-        logger.info("🔄 WorkflowOptimizerNode: Starting prep_async")
-        
-        # Ensure shared is a dictionary
-        if not isinstance(shared, dict):
-            shared = {}
-            logger.warning("WorkflowOptimizerNode: shared parameter is not a dictionary, using empty dict")
-        
-        workflow_results = shared.get("workflow_results", {})
-        user_feedback = shared.get("user_feedback", "")
-        original_workflow = shared.get("workflow_design")
-        
-        logger.info(f"📊 WorkflowOptimizerNode: Analyzing {len(workflow_results)} workflow results")
-        logger.info(f"💬 WorkflowOptimizerNode: User feedback length: {len(user_feedback)}")
-        
-        result = {
-            "workflow_results": workflow_results,
-            "user_feedback": user_feedback,
-            "original_workflow": original_workflow
-        }
-        
-        logger.info("✅ WorkflowOptimizerNode: prep_async completed")
-        return result
-    
-    async def exec_async(self, prep_res):
-        logger.info("🔄 WorkflowOptimizerNode: Starting exec_async")
-        
-        workflow_results = prep_res["workflow_results"]
-        user_feedback = prep_res["user_feedback"]
-        original_workflow = prep_res["original_workflow"]
-        
-        # Analyze if workflow needs optimization
-        optimization_needed = False
-        optimization_reasons = []
-        
-        logger.info("🔍 WorkflowOptimizerNode: Analyzing workflow results for optimization needs")
-        
-        # Check for errors in results
-        for node_name, result in workflow_results.items():
-            if isinstance(result, str) and "error" in result.lower():
-                optimization_needed = True
-                optimization_reasons.append(f"Error in {node_name}: {result}")
-                logger.warning(f"⚠️ WorkflowOptimizerNode: Found error in {node_name}: {result}")
-        
-        # Check user feedback for dissatisfaction
-        if user_feedback and any(word in user_feedback.lower() for word in ["not good", "wrong", "bad", "improve"]):
-            optimization_needed = True
-            optimization_reasons.append(f"User feedback indicates dissatisfaction: {user_feedback}")
-            logger.info(f"💬 WorkflowOptimizerNode: User feedback indicates dissatisfaction: {user_feedback}")
-        
-        if optimization_needed:
-            logger.info("🔧 WorkflowOptimizerNode: Optimization needed, calling LLM for suggestions")
-            # Create optimization prompt
-            prompt = f"""
-The workflow execution had issues that need optimization:
-
-ORIGINAL WORKFLOW:
-{json.dumps(original_workflow, indent=2)}
-
-ISSUES FOUND:
-{chr(10).join(optimization_reasons)}
-
-WORKFLOW RESULTS:
-{json.dumps(workflow_results, indent=2)}
-
-USER FEEDBACK:
-{user_feedback}
-
-Please suggest improvements to the workflow. Return in YAML format:
-
-```yaml
-optimization_needed: true
-issues:
-  - <issue description>
-  - <issue description>
-
-suggested_improvements:
-  - <improvement description>
-  - <improvement description>
-
-revised_workflow:
-  <revised workflow structure>
-```
-"""
-            
-            response = call_llm(prompt)
-            yaml_str = response.split("```yaml")[1].split("```")[0].strip()
-            optimization_plan = yaml.safe_load(yaml_str)
-            
-            logger.info("✅ WorkflowOptimizerNode: Generated optimization plan")
-            return optimization_plan
-        else:
-            logger.info("✅ WorkflowOptimizerNode: No optimization needed, workflow executed successfully")
-            return {"optimization_needed": False, "message": "Workflow executed successfully"}
-    
-    async def post_async(self, shared, prep_res, exec_res):
-        logger.info("🔄 WorkflowOptimizerNode: Starting post_async")
-        
-        if exec_res.get("optimization_needed", False):
-            logger.info("🔧 WorkflowOptimizerNode: Optimization needed, storing plan and sending suggestions")
-            # Store optimization plan
-            shared["optimization_plan"] = exec_res
-            
-            # Send optimization suggestions to user
-            websocket = shared.get("websocket")
             if websocket:
                 try:
                     await websocket.send_text(json.dumps({
-                        "type": "optimization_suggestions",
-                        "content": exec_res
+                        "type": "permission_request",
+                        "content": content
                     }))
-                    logger.info("📤 WorkflowOptimizerNode: Sent optimization suggestions to websocket")
+                    logger.info("📤 UserInteractionNode: Sent permission request to user")
                 except Exception as e:
-                    logger.error(f"❌ WorkflowOptimizerNode: Failed to send optimization suggestions: {e}")
+                    logger.error(f"❌ UserInteractionNode: Failed to send permission request: {e}")
             
-            logger.info("✅ WorkflowOptimizerNode: Returning 'optimize_workflow'")
-            return "optimize_workflow"
-        else:
-            logger.info("✅ WorkflowOptimizerNode: Workflow successful, returning 'workflow_success'")
-            # Workflow is complete and successful
-            shared["workflow_complete"] = True
-            return "workflow_success"
+            # Wait for permission response (in demo mode, auto-approve)
+            if hasattr(websocket, 'get_auto_permission'):
+                permission_response = websocket.get_auto_permission(content)
+                logger.info(f"🤖 UserInteractionNode: Auto permission: {permission_response}")
+            else:
+                # In production, this would wait for actual permission response
+                permission_response = {"approved": True, "reason": "Auto-approved"}
+                logger.info("⏳ UserInteractionNode: Waiting for permission response...")
+            
+            result = {
+                "type": "permission_response",
+                "request": content,
+                "response": permission_response
+            }
+        
+        logger.info("✅ UserInteractionNode: exec_async completed")
+        return result
+    
+    async def post_async(self, shared, prep_res, exec_res):
+        """Store interaction result in shared store"""
+        logger.info("🔄 UserInteractionNode: Starting post_async")
+        
+        result_type = exec_res["type"]
+        
+        if result_type == "question_response":
+            # Store question response
+            shared["user_response"] = exec_res["response"]
+            shared["pending_user_question"] = None
+            shared["waiting_for_user_response"] = False
+            
+        else:  # permission_response
+            # Store permission response
+            shared["permission_response"] = exec_res["response"]
+            shared["pending_permission_request"] = None
+            shared["waiting_for_permission"] = False
+        
+        logger.info(f"💾 UserInteractionNode: Stored {result_type} in shared store")
+        logger.info("✅ UserInteractionNode: post_async completed, returning 'default'")
+        return "default"
 
-# Legacy node for backward compatibility
-class StreamingChatNode(AsyncNode):
+class WorkflowOptimizerNode(AsyncNode):
     """
-    Legacy streaming chat node for backward compatibility (streams LLM output).
+    Node that optimizes workflows based on execution results.
     Example:
-        >>> node = StreamingChatNode()
-        >>> shared = {"user_message": "Hello", "websocket": ws}
+        >>> node = WorkflowOptimizerNode()
+        >>> shared = {"workflow_results": {...}, "execution_metrics": {...}}
         >>> await node.prep_async(shared)
-        # Prepares chat context
-        >>> await node.exec_async(prep_res)
-        # Streams LLM response to websocket
-    """
-    """
-    Legacy streaming chat node for backward compatibility (streams LLM output).
-    Example:
-        >>> node = StreamingChatNode()
-        >>> shared = {"user_message": "Hello", "websocket": ws}
-        >>> await node.prep_async(shared)
-        # Prepares chat context
-        >>> await node.exec_async(prep_res)
-        # Streams LLM response to websocket
+        # Prepares optimization context
+        >>> result = await node.exec_async(prep_res)
+        # Returns optimization suggestions
+        >>> action = await node.post_async(shared, prep_res, result)
+        # Stores optimization results in shared store
     """
     
     async def prep_async(self, shared):
-        logger.info("🔄 StreamingChatNode: Starting prep_async")
+        """Prepare workflow optimization context"""
+        logger.info("🔄 WorkflowOptimizerNode: Starting prep_async")
         
-        # Ensure shared is a dictionary
-        if not isinstance(shared, dict):
-            shared = {}
-            logger.warning("StreamingChatNode: shared parameter is not a dictionary, using empty dict")
+        workflow_results = shared.get("workflow_results", {})
+        execution_metrics = shared.get("execution_metrics", {})
+        
+        if not workflow_results:
+            raise ValueError("Workflow results are required for optimization")
+        
+        optimization_context = {
+            "workflow_results": workflow_results,
+            "execution_metrics": execution_metrics,
+            "optimization_targets": ["performance", "accuracy", "user_satisfaction"]
+        }
+        
+        logger.info("📋 WorkflowOptimizerNode: Prepared optimization context")
+        logger.info("✅ WorkflowOptimizerNode: prep_async completed")
+        return optimization_context
+    
+    async def exec_async(self, prep_res):
+        """Optimize workflow based on results"""
+        logger.info("🔄 WorkflowOptimizerNode: Starting exec_async")
+        
+        workflow_results = prep_res["workflow_results"]
+        execution_metrics = prep_res["execution_metrics"]
+        
+        # Analyze workflow performance
+        optimization_suggestions = []
+        
+        # Check for failed nodes
+        failed_nodes = [node for node, result in workflow_results.items() 
+                       if isinstance(result, str) and "error" in result.lower()]
+        
+        if failed_nodes:
+            optimization_suggestions.append({
+                "type": "error_fix",
+                "nodes": failed_nodes,
+                "suggestion": "Review and fix failed nodes",
+                "priority": "high"
+            })
+        
+        # Check for performance issues
+        if execution_metrics.get("total_time", 0) > 30:  # More than 30 seconds
+            optimization_suggestions.append({
+                "type": "performance",
+                "suggestion": "Consider parallel execution or caching",
+                "priority": "medium"
+            })
+        
+        # Check for user satisfaction
+        if execution_metrics.get("user_satisfaction", 0) < 0.7:
+            optimization_suggestions.append({
+                "type": "user_experience",
+                "suggestion": "Improve result quality and user interaction",
+                "priority": "high"
+            })
+        
+        optimization_result = {
+            "suggestions": optimization_suggestions,
+            "metrics": execution_metrics,
+            "workflow_health": "good" if not failed_nodes else "needs_attention"
+        }
+        
+        logger.info(f"🎯 WorkflowOptimizerNode: Generated {len(optimization_suggestions)} optimization suggestions")
+        logger.info("✅ WorkflowOptimizerNode: exec_async completed")
+        return optimization_result
+    
+    async def post_async(self, shared, prep_res, exec_res):
+        """Store optimization results in shared store"""
+        logger.info("🔄 WorkflowOptimizerNode: Starting post_async")
+        
+        # Store optimization results
+        shared["workflow_optimization"] = exec_res
+        
+        logger.info("💾 WorkflowOptimizerNode: Stored optimization results in shared store")
+        logger.info("✅ WorkflowOptimizerNode: post_async completed, returning 'default'")
+        return "default"
+
+class StreamingChatNode(AsyncNode):
+    """
+    Node that handles streaming chat responses.
+    Example:
+        >>> node = StreamingChatNode()
+        >>> shared = {"user_message": "Hello", "websocket": ws}
+        >>> await node.prep_async(shared)
+        # Prepares streaming context
+        >>> result = await node.exec_async(prep_res)
+        # Returns streaming response
+        >>> action = await node.post_async(shared, prep_res, result)
+        # Streams response to user
+    """
+    
+    async def prep_async(self, shared):
+        """Prepare streaming chat context"""
+        logger.info("🔄 StreamingChatNode: Starting prep_async")
         
         user_message = shared.get("user_message", "")
         websocket = shared.get("websocket")
         
-        conversation_history = shared.get("conversation_history", [])
-        conversation_history.append({"role": "user", "content": user_message})
+        if not user_message:
+            raise ValueError("User message is required")
         
-        logger.info(f"💬 StreamingChatNode: Processing message: {user_message[:50]}...")
-        logger.info(f"📚 StreamingChatNode: Conversation history length: {len(conversation_history)}")
+        if not websocket:
+            raise ValueError("WebSocket connection is required for streaming")
         
-        result = conversation_history, websocket
+        streaming_context = {
+            "user_message": user_message,
+            "websocket": websocket,
+            "streaming_config": {
+                "chunk_size": 50,
+                "delay": 0.1
+            }
+        }
+        
+        logger.info("📋 StreamingChatNode: Prepared streaming context")
         logger.info("✅ StreamingChatNode: prep_async completed")
-        return result
+        return streaming_context
     
     async def exec_async(self, prep_res):
+        """Generate and stream chat response"""
         logger.info("🔄 StreamingChatNode: Starting exec_async")
         
-        messages, websocket = prep_res
+        user_message = prep_res["user_message"]
+        websocket = prep_res["websocket"]
+        config = prep_res["streaming_config"]
         
-        logger.info("📤 StreamingChatNode: Sending start message")
-        await websocket.send_text(json.dumps({"type": "start", "content": ""}))
+        # Generate response (in real implementation, this would call LLM)
+        response = f"Hello! I received your message: '{user_message}'. How can I help you today?"
         
-        logger.info("🤖 StreamingChatNode: Starting LLM streaming")
-        full_response = ""
-        async for chunk_content in stream_llm(messages):
-            full_response += chunk_content
-            await websocket.send_text(json.dumps({
-                "type": "chunk", 
-                "content": chunk_content
-            }))
+        # Stream response in chunks
+        chunks = [response[i:i+config["chunk_size"]] 
+                 for i in range(0, len(response), config["chunk_size"])]
         
-        logger.info("📤 StreamingChatNode: Sending end message")
-        await websocket.send_text(json.dumps({"type": "end", "content": ""}))
+        for i, chunk in enumerate(chunks):
+            try:
+                await websocket.send_text(json.dumps({
+                    "type": "stream_chunk",
+                    "content": {
+                        "chunk": chunk,
+                        "chunk_index": i,
+                        "total_chunks": len(chunks)
+                    }
+                }))
+                logger.info(f"📤 StreamingChatNode: Sent chunk {i+1}/{len(chunks)}")
+                await asyncio.sleep(config["delay"])
+            except Exception as e:
+                logger.error(f"❌ StreamingChatNode: Failed to send chunk {i}: {e}")
+                break
         
-        logger.info(f"✅ StreamingChatNode: Generated response length: {len(full_response)}")
         logger.info("✅ StreamingChatNode: exec_async completed")
-        return full_response, websocket
+        return {"response": response, "chunks_sent": len(chunks)}
     
     async def post_async(self, shared, prep_res, exec_res):
+        """Store streaming results in shared store"""
         logger.info("🔄 StreamingChatNode: Starting post_async")
         
-        full_response, websocket = exec_res
+        # Store streaming results
+        shared["streaming_response"] = exec_res["response"]
+        shared["chunks_sent"] = exec_res["chunks_sent"]
         
-        conversation_history = shared.get("conversation_history", [])
-        conversation_history.append({"role": "assistant", "content": full_response})
-        shared["conversation_history"] = conversation_history
-        
-        logger.info("💾 StreamingChatNode: Updated conversation history")
-        logger.info("✅ StreamingChatNode: post_async completed")
+        logger.info(f"💾 StreamingChatNode: Stored streaming response ({exec_res['chunks_sent']} chunks)")
+        logger.info("✅ StreamingChatNode: post_async completed, returning 'default'")
+        return "default"
 
 class WorkflowEndNode(AsyncNode):
     """
-    Node that marks the end of a workflow and notifies the user.
+    Node that finalizes workflow execution and provides summary.
     Example:
         >>> node = WorkflowEndNode()
-        >>> shared = {"workflow_results": {...}, "websocket": ws}
+        >>> shared = {"workflow_results": {...}, "user_message": "..."}
         >>> await node.prep_async(shared)
-        # Prepares completion context
-        >>> await node.exec_async(prep_res)
-        # Sends completion message to websocket
+        # Prepares summary context
+        >>> result = await node.exec_async(prep_res)
+        # Returns workflow summary
+        >>> action = await node.post_async(shared, prep_res, result)
+        # Stores final results in shared store
     """
     
     async def prep_async(self, shared):
+        """Prepare workflow summary context"""
         logger.info("🔄 WorkflowEndNode: Starting prep_async")
         
-        # Ensure shared is a dictionary
-        if not isinstance(shared, dict):
-            shared = {}
-            logger.warning("WorkflowEndNode: shared parameter is not a dictionary, using empty dict")
-        
-        websocket = shared.get("websocket")
         workflow_results = shared.get("workflow_results", {})
+        user_message = shared.get("user_message", "")
         
-        logger.info(f"📊 WorkflowEndNode: Workflow has {len(workflow_results)} results")
+        if not workflow_results:
+            raise ValueError("Workflow results are required for summary")
         
-        result = {
-            "websocket": websocket,
-            "workflow_results": workflow_results
+        summary_context = {
+            "workflow_results": workflow_results,
+            "user_message": user_message,
+            "execution_summary": {
+                "total_nodes": len(workflow_results),
+                "successful_nodes": len([r for r in workflow_results.values() 
+                                       if not isinstance(r, str) or "error" not in r.lower()]),
+                "failed_nodes": len([r for r in workflow_results.values() 
+                                   if isinstance(r, str) and "error" in r.lower()])
+            }
         }
         
+        logger.info("📋 WorkflowEndNode: Prepared summary context")
         logger.info("✅ WorkflowEndNode: prep_async completed")
-        return result
+        return summary_context
     
     async def exec_async(self, prep_res):
+        """Generate workflow summary"""
         logger.info("🔄 WorkflowEndNode: Starting exec_async")
         
-        # Send completion message
-        websocket = prep_res["websocket"]
-        if websocket:
-            try:
-                await websocket.send_text(json.dumps({
-                    "type": "workflow_complete",
-                    "content": {
-                        "message": "Workflow completed successfully!",
-                        "results": prep_res["workflow_results"]
-                    }
-                }))
-                logger.info("📤 WorkflowEndNode: Sent workflow completion message to websocket")
-            except Exception as e:
-                logger.error(f"❌ WorkflowEndNode: Failed to send workflow completion message: {e}")
-        else:
-            logger.warning("⚠️ WorkflowEndNode: No websocket available to send completion message")
+        workflow_results = prep_res["workflow_results"]
+        user_message = prep_res["user_message"]
+        execution_summary = prep_res["execution_summary"]
         
-        result = "Workflow completed successfully"
+        # Generate summary
+        summary = {
+            "user_question": user_message,
+            "execution_summary": execution_summary,
+            "key_results": {},
+            "recommendations": [],
+            "next_steps": []
+        }
+        
+        # Extract key results
+        for node_name, result in workflow_results.items():
+            if isinstance(result, dict) and "recommendation" in result:
+                summary["key_results"][node_name] = result["recommendation"]
+            elif isinstance(result, str) and len(result) < 100:
+                summary["key_results"][node_name] = result
+        
+        # Generate recommendations
+        if execution_summary["failed_nodes"] > 0:
+            summary["recommendations"].append("Review failed nodes and retry workflow")
+        
+        if execution_summary["successful_nodes"] > 0:
+            summary["recommendations"].append("Workflow completed successfully")
+        
+        # Generate next steps
+        summary["next_steps"].append("Review results and take action")
+        summary["next_steps"].append("Optimize workflow if needed")
+        
+        logger.info(f"📊 WorkflowEndNode: Generated summary with {len(summary['key_results'])} key results")
         logger.info("✅ WorkflowEndNode: exec_async completed")
-        return result
+        return summary
     
     async def post_async(self, shared, prep_res, exec_res):
+        """Store final results in shared store"""
         logger.info("🔄 WorkflowEndNode: Starting post_async")
         
-        # Mark workflow as complete
-        shared["workflow_complete"] = True
-        shared["workflow_status"] = "success"
+        # Store final results
+        shared["workflow_summary"] = exec_res
+        shared["workflow_completed"] = True
         
-        logger.info("✅ WorkflowEndNode: Marked workflow as complete")
-        logger.info("🎉 WorkflowEndNode: Workflow execution finished successfully")
-        return None  # End the flow 
+        logger.info("💾 WorkflowEndNode: Stored final results in shared store")
+        logger.info("✅ WorkflowEndNode: post_async completed, returning 'workflow_end'")
+        return "workflow_end" 
