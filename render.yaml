@@ -1,0 +1,22 @@
+
+# Render.com service definition for ObiAgent backend
+# Make sure requirements.txt is present in ObiAgent/backend and Dockerfile is used from this directory
+
+services:
+  - type: web
+    name: obiagent-backend
+    env: python3
+    plan: free
+    buildCommand: |
+      cd ObiAgent/backend
+      docker build -t obiagent-backend .
+    startCommand: |
+      uvicorn server:app --host 0.0.0.0 --port 8000
+    dockerContext: ObiAgent/backend
+    dockerfilePath: ObiAgent/backend/Dockerfile
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: '1'
+    autoDeploy: true
+    ports:
+      - 8000

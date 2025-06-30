@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PocketFlow General Agent</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .chat-container {
+            height: 400px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .agent-message {
+            background: #e9ecef;
+            color: #333;
+        }
+        
+        .system-message {
+            background: #ffc107;
+            color: #333;
+            font-style: italic;
+        }
+        
+        .question-message {
+            background: #17a2b8;
+            color: white;
+            border-left: 4px solid #138496;
+        }
+        
+        .permission-message {
+            background: #fd7e14;
+            color: white;
+            border-left: 4px solid #e55a00;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+            position: relative;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .loading-spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .agent-status {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2196f3;
+            display: none;
+        }
+        
+        .agent-status.working {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        
+        .agent-status.waiting {
+            background: #d1ecf1;
+            border-left-color: #17a2b8;
+        }
+        
+        .example-questions {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .example-questions h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .example-question {
+            background: white;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+        
+        .example-question:hover {
+            background: #007bff;
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .example-question.disabled {
+            background: #e0e0e0;
+            color: #aaa;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .workflow-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.3s;
+        }
+        
+        .json-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        .json-key {
+            color: #0066cc;
+            font-weight: bold;
+        }
+        
+        .json-string {
+            color: #009900;
+        }
+        
+        .json-number {
+            color: #cc6600;
+        }
+        
+        .json-boolean {
+            color: #cc0066;
+        }
+        
+        .json-null {
+            color: #999999;
+        }
+        
+        .user-input-area {
+            display: block;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 2px solid #17a2b8;
+        }
+        
+        .user-input-area input {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .user-input-area button {
+            margin-right: 10px;
+        }
+        
+        .permission-request {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 2px solid #fd7e14;
+        }
+        
+        .permission-request h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+        
+        .permission-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .permission-buttons button {
+            flex: 1;
+        }
+        
+        .permission-buttons .grant {
+            background: #28a745;
+        }
+        
+        .permission-buttons .grant:hover {
+            background: #218838;
+        }
+        
+        .permission-buttons .deny {
+            background: #dc3545;
+        }
+        
+        .permission-buttons .deny:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 PocketFlow General Agent</h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+        
+        <div id="agentStatus" class="agent-status">
+            <strong>Agent Status:</strong> <span id="agentStatusText">Idle</span>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="message agent-message">
+                Hello! I'm your PocketFlow General Agent. I can help you solve complex problems by designing and executing workflows. Try asking me something like "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon."
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Ask me anything..." disabled>
+            <button id="sendButton" disabled>
+                <span class="loading-spinner" id="loadingSpinner"></span>
+                <span id="sendButtonText">Send</span>
+            </button>
+        </div>
+        
+        <div class="example-questions">
+            <h3>💡 Example Questions</h3>
+            <div class="example-question" onclick="sendExample(this)">
+                Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon.
+            </div>
+            <div class="example-question" onclick="sendExample(this)">
+                Find me the best hotel deals in Tokyo for next month, budget around $200 per night.
+            </div>
+            <div class="example-question" onclick="sendExample(this)">
+                Analyze the cost-effectiveness of different transportation options from New York to Boston.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+        let isWaitingForUserInput = false;
+        let currentQuestionId = null;
+        let currentPermissionId = null;
+        
+        const statusDiv = document.getElementById('status');
+        const agentStatusDiv = document.getElementById('agentStatus');
+        const agentStatusText = document.getElementById('agentStatusText');
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const sendButtonText = document.getElementById('sendButtonText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        
+        function updateStatus(status, className) {
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${className}`;
+        }
+        
+        function updateAgentStatus(status, className = '') {
+            agentStatusText.textContent = status;
+            agentStatusDiv.className = `agent-status ${className}`;
+            agentStatusDiv.style.display = 'block';
+        }
+        
+        function setLoadingState(loading) {
+            if (loading) {
+                sendButton.disabled = true;
+                loadingSpinner.style.display = 'inline-block';
+                sendButtonText.textContent = 'Processing...';
+                updateAgentStatus('Working on your request...', 'working');
+                document.querySelectorAll('.example-question').forEach(q => q.classList.add('disabled'));
+            } else {
+                sendButton.disabled = false;
+                loadingSpinner.style.display = 'none';
+                sendButtonText.textContent = 'Send';
+                if (!isWaitingForUserInput) {
+                    updateAgentStatus('Ready', '');
+                    document.querySelectorAll('.example-question').forEach(q => q.classList.remove('disabled'));
+                }
+            }
+        }
+        
+        function formatJSON(obj, indent = 0) {
+            // 递归格式化 JSON 为高亮 HTML
+            const pad = n => '&nbsp;'.repeat(n * 2);
+            if (typeof obj === 'string') {
+                try { obj = JSON.parse(obj); } catch (e) { return obj; }
+            }
+            if (obj === null) return '<span class="json-null">null</span>';
+            if (Array.isArray(obj)) {
+                if (obj.length === 0) return '[]';
+                let html = '[<br>';
+                for (let i = 0; i < obj.length; i++) {
+                    html += pad(indent + 1) + formatJSON(obj[i], indent + 1);
+                    if (i < obj.length - 1) html += ',';
+                    html += '<br>';
+                }
+                html += pad(indent) + ']';
+                return html;
+            }
+            if (typeof obj === 'object') {
+                const keys = Object.keys(obj);
+                if (keys.length === 0) return '{}';
+                let html = '{<br>';
+                keys.forEach((key, idx) => {
+                    html += pad(indent + 1) + '<span class="json-key">' + key + '</span>: ' + formatJSON(obj[key], indent + 1);
+                    if (idx < keys.length - 1) html += ',';
+                    html += '<br>';
+                });
+                html += pad(indent) + '}';
+                return html;
+            }
+            if (typeof obj === 'number') return '<span class="json-number">' + obj + '</span>';
+            if (typeof obj === 'boolean') return '<span class="json-boolean">' + obj + '</span>';
+            return '<span class="json-string">"' + String(obj) + '"</span>';
+        }
+        
+        function addMessage(content, type = 'agent') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            
+            if (typeof content === 'object') {
+                // Handle structured content
+                if (content.type === 'workflow_design') {
+                    messageDiv.innerHTML = `
+                        <strong>🎯 Workflow Design</strong><br>
+                        <strong>Name:</strong> ${content.workflow?.name || 'Unknown'}<br>
+                        <strong>Description:</strong> ${content.workflow?.description || 'No description'}<br>
+                        <strong>Estimated Steps:</strong> ${content.estimated_steps || 'Unknown'}<br>
+                        <strong>Requires Permission:</strong> ${content.requires_permission ? 'Yes' : 'No'}
+                        <div class="json-display">${formatJSON(content)}</div>
+                    `;
+                } else if (content.type === 'workflow_progress') {
+                    messageDiv.innerHTML = `
+                        <strong>⚡ Progress Update</strong><br>
+                        <strong>Current Node:</strong> ${content.current_node}<br>
+                        <strong>Description:</strong> ${content.description}<br>
+                        <strong>Progress:</strong> ${content.progress}
+                    `;
+                    
+                    // Add progress bar
+                    const progressBar = document.createElement('div');
+                    progressBar.className = 'progress-bar';
+                    const progressFill = document.createElement('div');
+                    progressFill.className = 'progress-fill';
+                    const progress = content.progress.split('/');
+                    const percentage = (parseInt(progress[0]) / parseInt(progress[1])) * 100;
+                    progressFill.style.width = `${percentage}%`;
+                    progressBar.appendChild(progressFill);
+                    messageDiv.appendChild(progressBar);
+                } else if (content.type === 'node_complete') {
+                    messageDiv.innerHTML = `
+                        <strong>✅ Node Complete</strong><br>
+                        <strong>Node:</strong> ${content.node}<br>
+                        <strong>Result:</strong> ${typeof content.result === 'object' ? 
+                            `<div class="json-display">${formatJSON(content.result)}</div>` : 
+                            content.result}
+                    `;
+                } else if (content.type === 'node_error') {
+                    messageDiv.innerHTML = `
+                        <strong>❌ Node Error</strong><br>
+                        <strong>Node:</strong> ${content.node}<br>
+                        <strong>Error:</strong> ${content.error}
+                    `;
+                } else {
+                    messageDiv.innerHTML = `<div class="json-display">${formatJSON(content)}</div>`;
+                }
+            } else {
+                messageDiv.textContent = content;
+            }
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function addUserInputArea(question, questionId) {
+            const inputArea = document.createElement('div');
+            inputArea.className = 'user-input-area';
+            inputArea.id = `userInput-${questionId}`;
+            inputArea.innerHTML = `
+                <h4>❓ ${question}</h4>
+                <input type="text" id="userResponse-${questionId}" placeholder="Enter your response...">
+                <button onclick="submitUserResponse('${questionId}')">Submit</button>
+                <button onclick="cancelUserInput('${questionId}')" style="background: #6c757d;">Cancel</button>
+            `;
+            console.log('addUserInputArea', question, questionId);
+            chatContainer.appendChild(inputArea);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            // 禁用主输入框和 send button
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            // 禁用 Example Questions
+            document.querySelectorAll('.example-question').forEach(q => q.classList.add('disabled'));
+            // Focus on input
+            setTimeout(() => {
+                const input = document.getElementById(`userResponse-${questionId}`);
+                input.focus();
+                // 支持回车提交
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        submitUserResponse(questionId);
+                    }
+                });
+            }, 100);
+        }
+        
+        function addPermissionRequest(permissionData) {
+            const permissionDiv = document.createElement('div');
+            permissionDiv.className = 'permission-request';
+            permissionDiv.id = `permission-${permissionData.request_id}`;
+            permissionDiv.innerHTML = `
+                <h4>🔐 Permission Request</h4>
+                <p><strong>Action:</strong> ${permissionData.action}</p>
+                <p><strong>Description:</strong> ${permissionData.description}</p>
+                <p><strong>Reason:</strong> ${permissionData.reason}</p>
+                <div class="permission-buttons">
+                    <button class="grant" onclick="respondToPermission('${permissionData.request_id}', true)">Grant Permission</button>
+                    <button class="deny" onclick="respondToPermission('${permissionData.request_id}', false)">Deny Permission</button>
+                </div>
+            `;
+            chatContainer.appendChild(permissionDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function submitUserResponse(questionId) {
+            const input = document.getElementById(`userResponse-${questionId}`);
+            const response = input.value.trim();
+            if (response) {
+                // Send response to server
+                ws.send(JSON.stringify({
+                    type: 'user_response',
+                    question_id: questionId,
+                    content: response
+                }));
+                // Remove input area
+                const inputArea = document.getElementById(`userInput-${questionId}`);
+                if (inputArea) {
+                    inputArea.remove();
+                }
+                // Add user response to chat
+                addMessage(response, 'user');
+                isWaitingForUserInput = false;
+                setLoadingState(false);
+                updateAgentStatus('Processing your response...', 'working');
+                // 恢复主输入框和 send button
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                // 恢复 Example Questions
+                document.querySelectorAll('.example-question').forEach(q => q.classList.remove('disabled'));
+            }
+        }
+        
+        function cancelUserInput(questionId) {
+            const inputArea = document.getElementById(`userInput-${questionId}`);
+            if (inputArea) {
+                inputArea.remove();
+            }
+            isWaitingForUserInput = false;
+            setLoadingState(false);
+            updateAgentStatus('Ready', '');
+            // 恢复主输入框和 send button
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            // 恢复 Example Questions
+            document.querySelectorAll('.example-question').forEach(q => q.classList.remove('disabled'));
+        }
+        
+        function respondToPermission(requestId, granted) {
+            ws.send(JSON.stringify({
+                type: 'permission_response',
+                request_id: requestId,
+                granted: granted,
+                response: granted ? 'Permission granted' : 'Permission denied'
+            }));
+            
+            // Remove permission request
+            const permissionDiv = document.getElementById(`permission-${requestId}`);
+            if (permissionDiv) {
+                permissionDiv.remove();
+            }
+            
+            // Add response to chat
+            addMessage(`Permission ${granted ? 'granted' : 'denied'} for request ${requestId}`, 'system');
+            
+            updateAgentStatus('Processing permission response...', 'working');
+        }
+        
+        function connect() {
+            updateStatus('Connecting...', 'connecting');
+            
+            ws = new WebSocket('ws://localhost:8000/api/v1/ws');
+            
+            ws.onopen = function() {
+                isConnected = true;
+                updateStatus('Connected', 'connected');
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                updateAgentStatus('Ready', '');
+                addMessage('Connected to PocketFlow General Agent!', 'system');
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('Received:', data);
+                
+                if (data.type === 'chunk') {
+                    // Handle streaming response
+                    const lastMessage = chatContainer.lastElementChild;
+                    if (lastMessage && lastMessage.classList.contains('agent-message')) {
+                        lastMessage.textContent += data.content;
+                    } else {
+                        addMessage(data.content, 'agent');
+                    }
+                } else if (data.type === 'start') {
+                    addMessage('', 'agent');
+                } else if (data.type === 'end') {
+                    setLoadingState(false);
+                } else if (data.type === 'user_question') {
+                    console.log('hit user_question', data.content);
+                    // Handle user question
+                    isWaitingForUserInput = true;
+                    setLoadingState(false);
+                    updateAgentStatus('Waiting for your response...', 'waiting');
+                    const questionData = data.content;
+                    const questionId = `q_${Date.now()}`;
+                    currentQuestionId = questionId;
+                    addMessage(questionData.question, 'question');
+                    addUserInputArea(questionData.question, questionId);
+                } else if (data.type === 'workflow_progress') {
+                    addMessage(data.content, 'agent');
+                } else if (data.type === 'permission_request') {
+                    // Handle permission request
+                    isWaitingForUserInput = true;
+                    setLoadingState(false);
+                    updateAgentStatus('Waiting for permission...', 'waiting');
+                    currentPermissionId = data.content.request_id;
+                    addPermissionRequest(data.content);
+                } else {
+                    addMessage(data.content, 'agent');
+                }
+            };
+            
+            ws.onclose = function() {
+                isConnected = false;
+                updateStatus('Disconnected', 'disconnected');
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+                agentStatusDiv.style.display = 'none';
+                addMessage('Connection lost. Please refresh the page.', 'system');
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                updateStatus('Connection Error', 'disconnected');
+            };
+        }
+        
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (isWaitingForUserInput) {
+                // 等待 user_query 回复时，主输入框禁用，直接 return
+                return;
+            }
+            if (message && isConnected && !isWaitingForUserInput) {
+                addMessage(message, 'user');
+                setLoadingState(true);
+                ws.send(JSON.stringify({
+                    type: 'chat',
+                    content: message
+                }));
+                messageInput.value = '';
+            }
+        }
+        
+        function sendExample(element) {
+            if (isConnected && !isWaitingForUserInput) {
+                const message = element.textContent;
+                messageInput.value = message;
+                sendMessage();
+            } else if (isWaitingForUserInput) {
+                alert('Please respond to the current question first.');
+            } else {
+                alert('Please wait for the connection to be established.');
+            }
+        }
+        
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Connect on page load
+        connect();
+    </script>
+</body>
+</html> 

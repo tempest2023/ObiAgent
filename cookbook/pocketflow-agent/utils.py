@@ -48,5 +48,5 @@ if __name__ == "__main__":
     print("## Testing search_web")
     query = "Who won the Nobel Prize in Physics 2024?"
     print(f"## Query: {query}")
-    results = search_web(query)
+    results = search_web_duckduckgo(query)
     print(f"## Results: {results}")
