@@ -82,3 +82,4 @@ test.ipynb
 
 # workflows cache data
 backend/workflows/
+backend/agent/test/workflows/
