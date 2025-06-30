@@ -509,7 +509,7 @@ class WorkflowExecutorNode(AsyncNode):
             connections=connections,
             shared_store_schema=shared_store_schema,
             success=True,
-            tags=["flight_booking", "cost_analysis"]
+            tags=["agent_generated"]
         )
         
         logger.info("💾 WorkflowExecutorNode: Saved workflow to workflow store")
