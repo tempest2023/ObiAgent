@@ -10,3 +10,4 @@ python-multipart==0.0.6
 pytest>=8.4.1
 pytest-asyncio==1.0.0
 duckduckgo-search>=7.5.2
+google-genai>=1.23.0
