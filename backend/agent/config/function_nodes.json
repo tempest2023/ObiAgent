@@ -151,107 +151,105 @@
       "module_path": "agent.function_nodes.firecrawl_scrape",
       "class_name": "FirecrawlScrapeNode"
     },
-    "company_info_search": {
-      "name": "company_info_search",
-      "description": "Search and extract basic company information including founding details, business model, and key personnel",
+    "research_query_decomposer": {
+      "name": "research_query_decomposer",
+      "description": "Decompose complex research questions into manageable sub-questions with search strategies and priorities",
       "category": "analysis",
       "permission_level": "none",
-      "inputs": ["company_name", "search_results"],
-      "outputs": ["company_info"],
+      "inputs": ["research_question", "research_depth", "research_context"],
+      "outputs": ["research_decomposition"],
       "examples": [
         {
-          "company_name": "OpenAI",
-          "search_results": "web_search_results_about_company",
-          "output": "Structured company information with founding details, business model, and key metrics"
+          "research_question": "How is artificial intelligence transforming healthcare?",
+          "research_depth": "comprehensive",
+          "research_context": "medical_technology",
+          "output": "Structured decomposition with 8-12 sub-questions, search strategies, and research plan"
         }
       ],
       "estimated_cost": 0.03,
       "estimated_time": 8,
-      "module_path": "agent.function_nodes.company_info_search",
-      "class_name": "CompanyInfoSearchNode"
+      "module_path": "agent.function_nodes.research_query_decomposer",
+      "class_name": "ResearchQueryDecomposerNode"
     },
-    "financial_data_search": {
-      "name": "financial_data_search",
-      "description": "Search and extract financial data including revenue, funding, valuation, and key financial metrics",
+    "multi_source_information_gatherer": {
+      "name": "multi_source_information_gatherer",
+      "description": "Gather and analyze information from multiple sources for research sub-questions with credibility assessment",
       "category": "analysis",
       "permission_level": "none",
-      "inputs": ["company_name", "search_results", "company_info"],
-      "outputs": ["financial_data"],
+      "inputs": ["current_sub_question", "search_results", "research_context"],
+      "outputs": ["information_gathered"],
       "examples": [
         {
-          "company_name": "OpenAI",
-          "search_results": "financial_search_results",
-          "company_info": "company_context",
-          "output": "Comprehensive financial data including revenue, funding rounds, valuation, and financial health metrics"
+          "current_sub_question": "What are the current applications of AI in medical diagnosis?",
+          "search_results": "web_search_results",
+          "research_context": "healthcare_research",
+          "output": "Structured information with key findings, data points, expert opinions, and source analysis"
         }
       ],
       "estimated_cost": 0.04,
       "estimated_time": 10,
-      "module_path": "agent.function_nodes.financial_data_search",
-      "class_name": "FinancialDataSearchNode"
+      "module_path": "agent.function_nodes.multi_source_information_gatherer",
+      "class_name": "MultiSourceInformationGathererNode"
     },
-    "news_analysis": {
-      "name": "news_analysis",
-      "description": "Analyze recent news and developments for financial impact, sentiment analysis, and market trends",
+    "information_synthesizer": {
+      "name": "information_synthesizer",
+      "description": "Synthesize information from multiple research findings into coherent insights and identify patterns",
       "category": "analysis",
       "permission_level": "none",
-      "inputs": ["company_name", "search_results", "news_timeframe", "company_info"],
-      "outputs": ["news_analysis"],
+      "inputs": ["research_findings", "research_scope", "main_question"],
+      "outputs": ["research_synthesis"],
       "examples": [
         {
-          "company_name": "OpenAI",
-          "search_results": "recent_news_results",
-          "news_timeframe": "12 months",
-          "company_info": "company_context",
-          "output": "Comprehensive news analysis with sentiment scores, financial impact assessment, and risk analysis"
-        }
-      ],
-      "estimated_cost": 0.04,
-      "estimated_time": 12,
-      "module_path": "agent.function_nodes.news_analysis",
-      "class_name": "NewsAnalysisNode"
-    },
-    "financial_metrics_calculator": {
-      "name": "financial_metrics_calculator",
-      "description": "Calculate comprehensive financial metrics and ratios from collected financial data",
-      "category": "analysis",
-      "permission_level": "none",
-      "inputs": ["financial_data", "company_info", "news_analysis"],
-      "outputs": ["financial_metrics_calculated"],
-      "examples": [
-        {
-          "financial_data": "collected_financial_data",
-          "company_info": "company_information",
-          "news_analysis": "market_analysis",
-          "output": "Calculated financial metrics including valuation ratios, growth metrics, performance indicators, and investment grade"
-        }
-      ],
-      "estimated_cost": 0.02,
-      "estimated_time": 5,
-      "module_path": "agent.function_nodes.financial_metrics_calculator",
-      "class_name": "FinancialMetricsCalculatorNode"
-    },
-    "financial_report_generator": {
-      "name": "financial_report_generator",
-      "description": "Generate comprehensive financial reports from collected data, metrics, and analysis",
-      "category": "creation",
-      "permission_level": "none",
-      "inputs": ["company_info", "financial_data", "news_analysis", "financial_metrics_calculated", "report_type"],
-      "outputs": ["financial_report"],
-      "examples": [
-        {
-          "company_info": "company_information",
-          "financial_data": "financial_metrics",
-          "news_analysis": "market_analysis",
-          "financial_metrics_calculated": "calculated_metrics",
-          "report_type": "comprehensive",
-          "output": "Structured financial report with executive summary, financial analysis, market assessment, and investment recommendations"
+          "research_findings": "collected_research_data",
+          "research_scope": "research_parameters",
+          "main_question": "How is AI transforming healthcare?",
+          "output": "Comprehensive synthesis with key insights, thematic analysis, conclusions, and gap identification"
         }
       ],
       "estimated_cost": 0.05,
+      "estimated_time": 12,
+      "module_path": "agent.function_nodes.information_synthesizer",
+      "class_name": "InformationSynthesizerNode"
+    },
+    "citation_manager": {
+      "name": "citation_manager",
+      "description": "Create proper academic citations and manage source attribution for research findings",
+      "category": "creation",
+      "permission_level": "none",
+      "inputs": ["research_findings", "search_results", "citation_style"],
+      "outputs": ["citations"],
+      "examples": [
+        {
+          "research_findings": "research_data_with_sources",
+          "search_results": "source_references",
+          "citation_style": "apa",
+          "output": "Comprehensive citation database with proper formatting, credibility assessment, and bibliography"
+        }
+      ],
+      "estimated_cost": 0.03,
       "estimated_time": 8,
-      "module_path": "agent.function_nodes.financial_report_generator",
-      "class_name": "FinancialReportGeneratorNode"
+      "module_path": "agent.function_nodes.citation_manager",
+      "class_name": "CitationManagerNode"
+    },
+    "research_report_generator": {
+      "name": "research_report_generator",
+      "description": "Generate structured research reports from synthesized findings with proper citations and formatting",
+      "category": "creation",
+      "permission_level": "none",
+      "inputs": ["research_synthesis", "citations", "report_config"],
+      "outputs": ["research_report"],
+      "examples": [
+        {
+          "research_synthesis": "synthesized_research_findings",
+          "citations": "citation_database",
+          "report_config": "comprehensive_academic_report",
+          "output": "Professional research report with executive summary, detailed sections, citations, and recommendations"
+        }
+      ],
+      "estimated_cost": 0.06,
+      "estimated_time": 15,
+      "module_path": "agent.function_nodes.research_report_generator",
+      "class_name": "ResearchReportGeneratorNode"
     }
   }
 } 
