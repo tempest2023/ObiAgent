@@ -150,6 +150,108 @@
       "estimated_time": 8,
       "module_path": "agent.function_nodes.firecrawl_scrape",
       "class_name": "FirecrawlScrapeNode"
+    },
+    "company_info_search": {
+      "name": "company_info_search",
+      "description": "Search and extract basic company information including founding details, business model, and key personnel",
+      "category": "analysis",
+      "permission_level": "none",
+      "inputs": ["company_name", "search_results"],
+      "outputs": ["company_info"],
+      "examples": [
+        {
+          "company_name": "OpenAI",
+          "search_results": "web_search_results_about_company",
+          "output": "Structured company information with founding details, business model, and key metrics"
+        }
+      ],
+      "estimated_cost": 0.03,
+      "estimated_time": 8,
+      "module_path": "agent.function_nodes.company_info_search",
+      "class_name": "CompanyInfoSearchNode"
+    },
+    "financial_data_search": {
+      "name": "financial_data_search",
+      "description": "Search and extract financial data including revenue, funding, valuation, and key financial metrics",
+      "category": "analysis",
+      "permission_level": "none",
+      "inputs": ["company_name", "search_results", "company_info"],
+      "outputs": ["financial_data"],
+      "examples": [
+        {
+          "company_name": "OpenAI",
+          "search_results": "financial_search_results",
+          "company_info": "company_context",
+          "output": "Comprehensive financial data including revenue, funding rounds, valuation, and financial health metrics"
+        }
+      ],
+      "estimated_cost": 0.04,
+      "estimated_time": 10,
+      "module_path": "agent.function_nodes.financial_data_search",
+      "class_name": "FinancialDataSearchNode"
+    },
+    "news_analysis": {
+      "name": "news_analysis",
+      "description": "Analyze recent news and developments for financial impact, sentiment analysis, and market trends",
+      "category": "analysis",
+      "permission_level": "none",
+      "inputs": ["company_name", "search_results", "news_timeframe", "company_info"],
+      "outputs": ["news_analysis"],
+      "examples": [
+        {
+          "company_name": "OpenAI",
+          "search_results": "recent_news_results",
+          "news_timeframe": "12 months",
+          "company_info": "company_context",
+          "output": "Comprehensive news analysis with sentiment scores, financial impact assessment, and risk analysis"
+        }
+      ],
+      "estimated_cost": 0.04,
+      "estimated_time": 12,
+      "module_path": "agent.function_nodes.news_analysis",
+      "class_name": "NewsAnalysisNode"
+    },
+    "financial_metrics_calculator": {
+      "name": "financial_metrics_calculator",
+      "description": "Calculate comprehensive financial metrics and ratios from collected financial data",
+      "category": "analysis",
+      "permission_level": "none",
+      "inputs": ["financial_data", "company_info", "news_analysis"],
+      "outputs": ["financial_metrics_calculated"],
+      "examples": [
+        {
+          "financial_data": "collected_financial_data",
+          "company_info": "company_information",
+          "news_analysis": "market_analysis",
+          "output": "Calculated financial metrics including valuation ratios, growth metrics, performance indicators, and investment grade"
+        }
+      ],
+      "estimated_cost": 0.02,
+      "estimated_time": 5,
+      "module_path": "agent.function_nodes.financial_metrics_calculator",
+      "class_name": "FinancialMetricsCalculatorNode"
+    },
+    "financial_report_generator": {
+      "name": "financial_report_generator",
+      "description": "Generate comprehensive financial reports from collected data, metrics, and analysis",
+      "category": "creation",
+      "permission_level": "none",
+      "inputs": ["company_info", "financial_data", "news_analysis", "financial_metrics_calculated", "report_type"],
+      "outputs": ["financial_report"],
+      "examples": [
+        {
+          "company_info": "company_information",
+          "financial_data": "financial_metrics",
+          "news_analysis": "market_analysis",
+          "financial_metrics_calculated": "calculated_metrics",
+          "report_type": "comprehensive",
+          "output": "Structured financial report with executive summary, financial analysis, market assessment, and investment recommendations"
+        }
+      ],
+      "estimated_cost": 0.05,
+      "estimated_time": 8,
+      "module_path": "agent.function_nodes.financial_report_generator",
+      "class_name": "FinancialReportGeneratorNode"
     }
   }
 } 
