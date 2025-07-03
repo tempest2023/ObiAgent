@@ -66,8 +66,8 @@ ready_to_execute: true
 
     with patch("agent.nodes.call_llm", side_effect=lambda prompt: fake_call_llm_designer(prompt) if "redesign" in prompt or "analyze the user's question" in prompt else fake_call_llm_review(prompt)):
         await flow.run_async(shared)
-        # 最多5次循环，最后一次 ready_to_execute
-        assert shared["design_review_attempts"] == 6
+        # 最多3次循环，最后一次 ready_to_execute
+        assert shared["design_review_attempts"] == 4
         assert shared["rethinking_result"]["ready_to_execute"] is True
         assert shared["rethinking_result"]["needs_revision"] is False
 
