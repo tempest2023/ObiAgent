@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PocketFlow General Agent</title>
+    <title>Obi General Agent</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -316,11 +316,50 @@
         .permission-buttons .deny:hover {
             background: #c82333;
         }
+        
+        .ws-status-indicator {
+            position: fixed;
+            left: 30px;
+            bottom: 30px;
+            display: flex;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .ws-breath {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 8px 2px rgba(0,0,0,0.1);
+            animation: ws-breathing 1.5s infinite;
+        }
+        
+        .ws-breath.connected {
+            background: #4caf50;
+            box-shadow: 0 0 12px 4px #4caf50aa;
+        }
+        
+        .ws-breath.connecting {
+            background: #ffc107;
+            box-shadow: 0 0 12px 4px #ffc10788;
+        }
+        
+        .ws-breath.disconnected {
+            background: #dc3545;
+            box-shadow: 0 0 12px 4px #dc354588;
+        }
+        
+        @keyframes ws-breathing {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🤖 PocketFlow General Agent</h1>
+        <h1>🤖 Obi General Agent</h1>
         
         <div id="status" class="status disconnected">
             Disconnected
@@ -332,7 +371,7 @@
         
         <div class="chat-container" id="chatContainer">
             <div class="message agent-message">
-                Hello! I'm your PocketFlow General Agent. I can help you solve complex problems by designing and executing workflows. Try asking me something like "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon."
+                Hello! I'm your Obi General Agent. I can help you solve complex problems by designing and executing workflows. Try asking me something like "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon."
             </div>
         </div>
         
@@ -358,6 +397,12 @@
         </div>
     </div>
 
+    <!-- WebSocket breathing status indicator -->
+    <div class="ws-status-indicator" id="wsStatusIndicator">
+        <div class="ws-breath disconnected" id="wsBreath"></div>
+        <span id="wsStatusText" style="color:#555;font-size:15px;">Disconnected</span>
+    </div>
+
     <script>
         let ws = null;
         let isConnected = false;
@@ -374,9 +419,22 @@
         const sendButtonText = document.getElementById('sendButtonText');
         const loadingSpinner = document.getElementById('loadingSpinner');
         
+        const wsBreath = document.getElementById('wsBreath');
+        const wsStatusText = document.getElementById('wsStatusText');
+        
+        function updateWsBreath(status) {
+            wsBreath.className = 'ws-breath ' + status;
+            if (status === 'connected') wsStatusText.textContent = 'Connected';
+            else if (status === 'connecting') wsStatusText.textContent = 'Connecting...';
+            else wsStatusText.textContent = 'Disconnected';
+        }
+        
         function updateStatus(status, className) {
             statusDiv.textContent = status;
             statusDiv.className = `status ${className}`;
+            if (className.includes('connected')) updateWsBreath('connected');
+            else if (className.includes('connecting')) updateWsBreath('connecting');
+            else updateWsBreath('disconnected');
         }
         
         function updateAgentStatus(status, className = '') {
@@ -608,6 +666,27 @@
             updateAgentStatus('Processing permission response...', 'working');
         }
         
+        function addWorkflowReviewMessage(review) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message agent-message';
+            messageDiv.style.borderLeft = '6px solid #2196f3';
+            messageDiv.style.background = '#e3f2fd';
+            messageDiv.style.marginTop = '10px';
+            messageDiv.innerHTML = `
+                <strong>🧐 Workflow Review</strong><br>
+                <strong>LLM Reasoning:</strong><br>
+                <div style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 6px; font-size: 14px;">${review.thinking ? review.thinking.replace(/\n/g, '<br>') : ''}</div>
+                <strong>Needs Revision:</strong> <span style="color:${review.needs_revision ? '#dc3545' : '#28a745'};font-weight:bold;">${review.needs_revision ? 'Yes' : 'No'}</span><br>
+                <strong>Ready to Execute:</strong> <span style="color:${review.ready_to_execute ? '#28a745' : '#dc3545'};font-weight:bold;">${review.ready_to_execute ? 'Yes' : 'No'}</span><br>
+                <strong>Revision Suggestions:</strong>
+                <ul style="margin: 0 0 0 20px;">
+                    ${(review.revision_suggestions || []).map(s => `<li>${s}</li>`).join('')}
+                </ul>
+            `;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
         function connect() {
             updateStatus('Connecting...', 'connecting');
             
@@ -619,7 +698,7 @@
                 messageInput.disabled = false;
                 sendButton.disabled = false;
                 updateAgentStatus('Ready', '');
-                addMessage('Connected to PocketFlow General Agent!', 'system');
+                addMessage('Connected to Obi General Agent!', 'system');
             };
             
             ws.onmessage = function(event) {
@@ -658,6 +737,8 @@
                     updateAgentStatus('Waiting for permission...', 'waiting');
                     currentPermissionId = data.content.request_id;
                     addPermissionRequest(data.content);
+                } else if (data.type === 'workflow_review') {
+                    addWorkflowReviewMessage(data.content);
                 } else {
                     addMessage(data.content, 'agent');
                 }
@@ -708,15 +789,30 @@
         }
         
         // Event listeners
-        sendButton.addEventListener('click', sendMessage);
+        const _sendMessage = sendMessage;
+        sendButton.removeEventListener('click', sendMessage);
+        sendButton.addEventListener('click', function() { wsGuardedAction(_sendMessage); });
+        messageInput.removeEventListener('keypress', null);
         messageInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+            if (e.key === 'Enter') wsGuardedAction(_sendMessage);
         });
         
         // Connect on page load
         connect();
+        
+        // --- WebSocket breathing indicator logic ---
+        function wsGuardedAction(action) {
+            if (!isConnected) {
+                alert('WebSocket disconnected, please refresh or reconnect.');
+                return;
+            }
+            action();
+        }
+        
+        // Patch example question click
+        document.querySelectorAll('.example-question').forEach(q => {
+            q.onclick = function() { wsGuardedAction(() => sendExample(q)); };
+        });
     </script>
 </body>
 </html> 

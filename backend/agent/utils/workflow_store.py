@@ -37,8 +37,9 @@ class WorkflowDefinition:
 class WorkflowStore:
     """Store for saving and retrieving workflows"""
     
-    def __init__(self, storage_path: str = "workflows"):
-        self.storage_path = storage_path
+    def __init__(self, storage_path: str = "workflows", basedir: str = "./"):
+        if basedir is not None:
+            self.storage_path = os.path.join(basedir, storage_path)
         self.workflows: Dict[str, WorkflowDefinition] = {}
         self._ensure_storage_directory()
         self._load_existing_workflows()
@@ -220,4 +221,4 @@ class WorkflowStore:
         }
 
 # Global workflow store instance
-workflow_store = WorkflowStore() 
+workflow_store = WorkflowStore(storage_path = "workflows", basedir = "./")
