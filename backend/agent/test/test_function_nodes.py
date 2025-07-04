@@ -126,9 +126,22 @@ def test_analyze_results(monkeypatch):
     assert "analysis" in shared
 
 # --- WebSearchNode ---
-def test_web_search():
+def test_web_search(monkeypatch):
     if importlib.util.find_spec("duckduckgo_search") is None:
         pytest.skip("duckduckgo_search not installed")
+    
+    # Mock DDGS to avoid rate limiting issues
+    class MockDDGS:
+        def text(self, query, max_results=None):
+            return [
+                {"title": "OpenAI GPT-4", "body": "GPT-4 is a large language model", "href": "https://openai.com/gpt-4"},
+                {"title": "GPT-4 Features", "body": "Advanced AI capabilities", "href": "https://example.com/gpt4"}
+            ][:max_results]
+    
+    # Patch the DDGS import in web_search module
+    import agent.function_nodes.web_search
+    monkeypatch.setattr(agent.function_nodes.web_search, "DDGS", MockDDGS)
+    
     node = WebSearchNode()
     shared = {"query": "OpenAI GPT-4", "num_results": 2}
     prep_res = node.prep(shared)
