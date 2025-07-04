@@ -703,8 +703,8 @@
             
             ws.onmessage = function(event) {
                 const data = JSON.parse(event.data);
-                console.log('Received:', data);
-                
+                // Add detailed logging for debugging
+                console.log('[WS] Received message:', JSON.stringify(data, null, 2));
                 if (data.type === 'chunk') {
                     // Handle streaming response
                     const lastMessage = chatContainer.lastElementChild;
