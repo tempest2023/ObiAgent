@@ -4,11 +4,11 @@ import json
 from datetime import datetime
 
 # Import the nodes to test
-from .research_query_decomposer import ResearchQueryDecomposerNode
-from .multi_source_information_gatherer import MultiSourceInformationGathererNode
-from .information_synthesizer import InformationSynthesizerNode
-from .citation_manager import CitationManagerNode
-from .research_report_generator import ResearchReportGeneratorNode
+from ..function_nodes.research_query_decomposer import ResearchQueryDecomposerNode
+from ..function_nodes.multi_source_information_gatherer import MultiSourceInformationGathererNode
+from ..function_nodes.information_synthesizer import InformationSynthesizerNode
+from ..function_nodes.citation_manager import CitationManagerNode
+from ..function_nodes.research_report_generator import ResearchReportGeneratorNode
 
 
 class TestResearchQueryDecomposerNode(unittest.TestCase):
