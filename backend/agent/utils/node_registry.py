@@ -135,18 +135,6 @@ class NodeRegistry:
         ))
         
         self.register_node(NodeMetadata(
-            name="flight_search",
-            description="Search for flight options and prices",
-            category=NodeCategory.SEARCH,
-            permission_level=PermissionLevel.BASIC,
-            inputs=["origin", "destination", "date", "preferences"],
-            outputs=["flight_options"],
-            examples=[
-                {"origin": "LAX", "destination": "PVG", "date": "2024-03-15", "preferences": "afternoon departure"}
-            ]
-        ))
-        
-        self.register_node(NodeMetadata(
             name="hotel_search", 
             description="Search for hotel options and prices",
             category=NodeCategory.SEARCH,
@@ -158,30 +146,6 @@ class NodeRegistry:
             ]
         ))
         
-        # Analysis Nodes
-        self.register_node(NodeMetadata(
-            name="cost_analysis",
-            description="Analyze costs and find best value options",
-            category=NodeCategory.ANALYSIS,
-            permission_level=PermissionLevel.NONE,
-            inputs=["options", "criteria"],
-            outputs=["analysis_result"],
-            examples=[
-                {"options": "flight_options", "criteria": "cost_performance"}
-            ]
-        ))
-        
-        self.register_node(NodeMetadata(
-            name="preference_matcher",
-            description="Match user preferences with available options",
-            category=NodeCategory.ANALYSIS,
-            permission_level=PermissionLevel.NONE,
-            inputs=["options", "preferences"],
-            outputs=["matched_options"],
-            examples=[
-                {"options": "flight_options", "preferences": "afternoon departure, budget friendly"}
-            ]
-        ))
         
         # Communication Nodes
         self.register_node(NodeMetadata(
@@ -209,18 +173,6 @@ class NodeRegistry:
         ))
         
         # Booking and Payment Nodes
-        self.register_node(NodeMetadata(
-            name="flight_booking",
-            description="Book a flight ticket",
-            category=NodeCategory.BOOKING,
-            permission_level=PermissionLevel.CRITICAL,
-            inputs=["flight_option", "passenger_info", "payment_info"],
-            outputs=["booking_confirmation"],
-            examples=[
-                {"flight_option": "selected_flight", "passenger_info": "user_details", "payment_info": "payment_method"}
-            ]
-        ))
-        
         self.register_node(NodeMetadata(
             name="payment_processing",
             description="Process payment for booking",
