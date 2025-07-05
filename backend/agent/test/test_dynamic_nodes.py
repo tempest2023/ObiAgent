@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Pytest tests for dynamic node loading system.
+Unit tests for dynamic node loading system.
 
 This script tests:
 1. Loading node metadata from JSON config
@@ -9,7 +9,8 @@ This script tests:
 4. UserQueryNode logic
 """
 import logging
-import pytest
+import unittest
+from unittest.mock import Mock, patch
 from agent.utils.node_registry import node_registry, NodeCategory
 from agent.utils.node_loader import node_loader
 
@@ -68,13 +69,28 @@ def test_node_execution():
     assert node_instance is not None, "Failed to create node instance"
     prep_res = node_instance.prep(shared)
     logger.info(f"✅ Node prep completed: {prep_res}")
-    exec_res = node_instance.exec(prep_res)
-    logger.info(f"✅ Node exec completed: {type(exec_res)}")
-    action = node_instance.post(shared, prep_res, exec_res)
-    logger.info(f"✅ Node post completed: {action}")
-    assert "search_results" in shared, "Results not stored in shared"
-    assert isinstance(shared["search_results"], list)
-    logger.info(f"✅ Results stored in shared: {len(shared['search_results'])} items")
+    
+    # Mock the web search execution to avoid hitting real API
+    with patch.object(node_instance, 'exec') as mock_exec:
+        # Mock the exec method to return fake search results
+        mock_exec.return_value = [
+            {"title": "Test Result 1", "snippet": "Test snippet 1", "link": "https://example.com/1"},
+            {"title": "Test Result 2", "snippet": "Test snippet 2", "link": "https://example.com/2"}
+        ]
+        
+        exec_res = node_instance.exec(prep_res)
+        logger.info(f"✅ Node exec completed: {type(exec_res)}")
+        
+        # Verify the mocked results
+        assert isinstance(exec_res, list)
+        assert len(exec_res) == 2
+        assert exec_res[0]["title"] == "Test Result 1"
+        
+        action = node_instance.post(shared, prep_res, exec_res)
+        logger.info(f"✅ Node post completed: {action}")
+        assert "search_results" in shared, "Results not stored in shared"
+        assert isinstance(shared["search_results"], list)
+        logger.info(f"✅ Results stored in shared: {len(shared['search_results'])} items")
 
 def test_user_query_node():
     """Test user query node specifically"""
@@ -94,4 +110,26 @@ def test_user_query_node():
     action = node_instance.post(shared, prep_res, exec_res)
     logger.info(f"✅ User query post completed: {action}")
     assert shared.get("waiting_for_user_response"), "Waiting for user response flag not set"
-    logger.info("✅ Waiting for user response flag set correctly") 
+    logger.info("✅ Waiting for user response flag set correctly")
+
+class TestDynamicNodes(unittest.TestCase):
+    """Test dynamic node loading system using unittest"""
+    
+    def test_node_registry_unittest(self):
+        """Test loading nodes from JSON configuration"""
+        test_node_registry()
+    
+    def test_node_loader_unittest(self):
+        """Test dynamic node loading"""
+        test_node_loader()
+    
+    def test_node_execution_unittest(self):
+        """Test node execution with mocking"""
+        test_node_execution()
+    
+    def test_user_query_node_unittest(self):
+        """Test user query node specifically"""
+        test_user_query_node()
+
+if __name__ == '__main__':
+    unittest.main() 

@@ -16,18 +16,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 # Test basic imports first
 def test_imports():
     """Test that all Arcade modules can be imported"""
-    try:
-        from agent.utils.arcade_client import ArcadeClient, call_arcade_tool
-        from agent.function_nodes.gmail_arcade import GmailSendEmailNode
-        from agent.function_nodes.slack_arcade import SlackSendMessageNode
-        from agent.function_nodes.x_arcade import XPostTweetNode
-        from agent.function_nodes.linkedin_arcade import LinkedInPostUpdateNode
-        from agent.function_nodes.discord_arcade import DiscordSendMessageNode
-        print("✅ All imports successful")
-        return True
-    except Exception as e:
-        print(f"❌ Import error: {e}")
-        return False
+    from agent.utils.arcade_client import ArcadeClient, call_arcade_tool
+    from agent.function_nodes.gmail_arcade import GmailSendEmailNode
+    from agent.function_nodes.slack_arcade import SlackSendMessageNode
+    from agent.function_nodes.x_arcade import XPostTweetNode
+    from agent.function_nodes.linkedin_arcade import LinkedInPostUpdateNode
+    from agent.function_nodes.discord_arcade import DiscordSendMessageNode
+    print("✅ All imports successful")
+    
+    # Test that imported classes are actually classes
+    assert isinstance(ArcadeClient, type), "ArcadeClient should be a class"
+    assert callable(call_arcade_tool), "call_arcade_tool should be callable"
+    assert isinstance(GmailSendEmailNode, type), "GmailSendEmailNode should be a class"
+    assert isinstance(SlackSendMessageNode, type), "SlackSendMessageNode should be a class"
+    assert isinstance(XPostTweetNode, type), "XPostTweetNode should be a class"
+    assert isinstance(LinkedInPostUpdateNode, type), "LinkedInPostUpdateNode should be a class"
+    assert isinstance(DiscordSendMessageNode, type), "DiscordSendMessageNode should be a class"
 
 class TestArcadeClient(unittest.TestCase):
     """Test the ArcadeClient utility"""
