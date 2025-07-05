@@ -7,32 +7,33 @@ logger = logging.getLogger(__name__)
 
 class ResultSummarizerNode(Node):
     """
-    Node to summarize results and provide recommendations using LLM.
+    General-purpose node to summarize results and provide recommendations using LLM.
     Example:
         >>> node = ResultSummarizerNode()
-        >>> shared = {"user_message": "Book a flight...", "cost_analysis": {...}}
+        >>> shared = {"user_message": "Analyze my options...", "analysis": {...}}
         >>> node.prep(shared)
-        # Returns (user_message, cost_analysis)
-        >>> node.exec(("Book a flight...", {...}))
+        # Returns (user_message, analysis)
+        >>> node.exec(("Analyze my options...", {...}))
         # Returns summary string
     """
     def prep(self, shared: Dict[str, Any]):
-        user_message, cost_analysis = shared.get("user_message", ""), shared.get("cost_analysis", {})
-        logger.info(f"🔄 ResultSummarizerNode: prep - user_message='{user_message[:30]}...', cost_analysis keys={list(cost_analysis.keys())}")
-        return user_message, cost_analysis
+        user_message = shared.get("user_message", "")
+        analysis = shared.get("analysis", {})
+        logger.info(f"🔄 ResultSummarizerNode: prep - user_message='{user_message[:30]}...', analysis keys={list(analysis.keys())}")
+        return user_message, analysis
 
     def exec(self, inputs):
-        user_message, cost_analysis = inputs
-        logger.info(f"🔄 ResultSummarizerNode: exec - user_message='{user_message[:30]}...', cost_analysis keys={list(cost_analysis.keys())}")
+        user_message, analysis = inputs
+        logger.info(f"🔄 ResultSummarizerNode: exec - user_message='{user_message[:30]}...', analysis keys={list(analysis.keys())}")
         prompt = f"""
-You are a travel assistant. Summarize the following flight booking analysis for the user:
+You are an expert assistant. Summarize the following analysis for the user and provide clear, actionable recommendations.
 
 User request: {user_message}
 
 Analysis:
-{cost_analysis}
+{analysis}
 
-Provide a concise summary and a clear recommendation for the best flight option.
+Provide a concise summary and, if appropriate, a clear recommendation for the best option or next steps.
 """
         try:
             logger.info("🤖 ResultSummarizerNode: Calling LLM for summary")

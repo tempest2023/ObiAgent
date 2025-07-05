@@ -3,14 +3,10 @@ import pytest
 import importlib
 
 from agent.function_nodes.firecrawl_scrape import FirecrawlScrapeNode
-from agent.function_nodes.flight_booking import FlightBookingNode
-from agent.function_nodes.preference_matcher import PreferenceMatcherNode
 from agent.function_nodes.data_formatter import DataFormatterNode
 from agent.function_nodes.permission_request import PermissionRequestNode
 from agent.function_nodes.user_query import UserQueryNode
 from agent.function_nodes.result_summarizer import ResultSummarizerNode
-from agent.function_nodes.cost_analysis import CostAnalysisNode
-from agent.function_nodes.flight_search import FlightSearchNode
 from agent.function_nodes.analyze_results import AnalyzeResultsNode
 from agent.function_nodes.web_search import WebSearchNode
 
@@ -31,26 +27,6 @@ def test_firecrawl_scrape(monkeypatch):
     node.post(shared, prep_res, result)
     assert "firecrawl_scrape_result" in shared
 
-# --- FlightBookingNode ---
-def test_flight_booking():
-    node = FlightBookingNode()
-    shared = {"selected_flight": {"airline": "UA", "flight_number": "UA123"}, "user_info": {"name": "Alice"}}
-    prep_res = node.prep(shared)
-    result = node.exec(prep_res)
-    assert result["status"] == "success"
-    node.post(shared, prep_res, result)
-    assert "booking_confirmation" in shared
-
-# --- PreferenceMatcherNode ---
-def test_preference_matcher():
-    node = PreferenceMatcherNode()
-    shared = {"flight_search_results": [{"departure_time": "afternoon"}, {"departure_time": "morning"}], "user_preferences": {"departure_time": "afternoon"}}
-    prep_res = node.prep(shared)
-    matched, summary = node.exec(prep_res)
-    assert isinstance(matched, list)
-    assert "afternoon" in summary
-    node.post(shared, prep_res, (matched, summary))
-    assert "matched_flights" in shared
 
 # --- DataFormatterNode ---
 def test_data_formatter():
@@ -62,14 +38,30 @@ def test_data_formatter():
     node.post(shared, prep_res, result)
 
 # --- PermissionRequestNode ---
-def test_permission_request():
+def test_permission_request_infer_type():
     node = PermissionRequestNode()
-    shared = {"operation": "payment", "details": "Book flight"}
+    shared = {"operation": "access database", "details": "Read user table"}
     prep_res = node.prep(shared)
+    assert prep_res[0] == "data_access"  # inferred type
     result = node.exec(prep_res)
     assert isinstance(result, str)
-    assert result.startswith("Permission request created:")
+    assert "Permission required: [DATA_ACCESS]" in result
+    assert "Request ID:" in result
     node.post(shared, prep_res, result)
+    assert "pending_permission_request" in shared
+    assert shared["waiting_for_permission"] is True
+
+def test_permission_request_explicit_type():
+    node = PermissionRequestNode()
+    shared = {"operation": "external API call", "details": "Send data to third-party service", "permission_type": "external_api"}
+    prep_res = node.prep(shared)
+    assert prep_res[0] == "external_api"  # explicit type
+    result = node.exec(prep_res)
+    assert "Permission required: [EXTERNAL_API]" in result
+    assert "Request ID:" in result
+    node.post(shared, prep_res, result)
+    assert "pending_permission_request" in shared
+    assert shared["waiting_for_permission"] is True
 
 # --- UserQueryNode ---
 def test_user_query():
@@ -84,7 +76,7 @@ def test_user_query():
 # --- ResultSummarizerNode ---
 def test_result_summarizer(monkeypatch):
     node = ResultSummarizerNode()
-    shared = {"user_message": "Book a flight", "cost_analysis": {"cheapest": {}, "best_value": {}, "recommendation": ""}}
+    shared = {"user_message": "Book a flight"}
     # Patch call_llm
     monkeypatch.setattr("agent.function_nodes.result_summarizer.call_llm", lambda *a, **k: "Summary text")
     prep_res = node.prep(shared)
@@ -92,26 +84,6 @@ def test_result_summarizer(monkeypatch):
     assert isinstance(result, str)
     node.post(shared, prep_res, result)
     assert "result_summary" in shared
-
-# --- CostAnalysisNode ---
-def test_cost_analysis():
-    node = CostAnalysisNode()
-    shared = {"flight_search_results": [{"price": 100, "duration": "2h", "airline": "UA", "flight_number": "UA1", "departure_time": "afternoon"}]}
-    prep_res = node.prep(shared)
-    result = node.exec(prep_res)
-    assert "cheapest" in result
-    node.post(shared, prep_res, result)
-    assert "cost_analysis" in shared
-
-# --- FlightSearchNode ---
-def test_flight_search():
-    node = FlightSearchNode()
-    shared = {"from": "LAX", "to": "PVG", "date": "2024-07-01"}
-    prep_res = node.prep(shared)
-    result = node.exec(prep_res)
-    assert isinstance(result, list)
-    node.post(shared, prep_res, result)
-    assert "flight_search_results" in shared
 
 # --- AnalyzeResultsNode ---
 def test_analyze_results(monkeypatch):

@@ -144,7 +144,35 @@ def test_multi_source_information_gatherer(mock_llm):
     print("✅ No results handling works")
     
     # Test with search results (should call LLM)
-    search_results = [{"title": "Test", "url": "test.com", "snippet": "AI medical applications"}]
+    search_results = [{"title": "Artificial Intelligence", "url": "test.com", "snippet": "Artificial intelligence is used in medical applications"}]
+    # Patch the mock_llm to return a response with key findings for this input
+    mock_llm.return_value = """
+```json
+{
+    "sub_question_id": "q1",
+    "sub_question": "artificial intelligence",
+    "information_gathered": {
+        "key_findings": [{"finding": "AI is used in medical applications", "source": "test.com"}],
+        "data_points": [],
+        "expert_opinions": [],
+        "conflicting_information": []
+    },
+    "source_analysis": {
+        "total_sources_analyzed": 1,
+        "source_breakdown": {"web": 1, "academic": 0, "news": 0, "official": 0, "other": 0},
+        "quality_assessment": {"high_quality": 0, "medium_quality": 1, "low_quality": 0, "average_credibility": 0.5},
+        "coverage_assessment": {"comprehensive": false, "gaps_identified": [], "additional_research_needed": false}
+    },
+    "research_status": {
+        "completeness_score": 0.7,
+        "confidence_level": "medium",
+        "information_quality": "good",
+        "ready_for_synthesis": true,
+        "next_steps": []
+    }
+}
+```
+"""
     inputs = ({"id": "q1", "question": "artificial intelligence"}, ["web"], search_results, {})
     result = node.exec(inputs)
     assert result["sub_question_id"] == "q1"

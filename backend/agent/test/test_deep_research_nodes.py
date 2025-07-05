@@ -4,11 +4,11 @@ import json
 from datetime import datetime
 
 # Import the nodes to test
-from ..function_nodes.research_query_decomposer import ResearchQueryDecomposerNode
-from ..function_nodes.multi_source_information_gatherer import MultiSourceInformationGathererNode
-from ..function_nodes.information_synthesizer import InformationSynthesizerNode
-from ..function_nodes.citation_manager import CitationManagerNode
-from ..function_nodes.research_report_generator import ResearchReportGeneratorNode
+from agent.function_nodes.research_query_decomposer import ResearchQueryDecomposerNode
+from agent.function_nodes.multi_source_information_gatherer import MultiSourceInformationGathererNode
+from agent.function_nodes.information_synthesizer import InformationSynthesizerNode
+from agent.function_nodes.citation_manager import CitationManagerNode
+from agent.function_nodes.research_report_generator import ResearchReportGeneratorNode
 
 
 class TestResearchQueryDecomposerNode(unittest.TestCase):
@@ -404,7 +404,7 @@ class TestInformationSynthesizerNode(unittest.TestCase):
         result = self.node.exec(inputs)
         
         self.assertIsInstance(result, dict)
-        self.assertEqual(result["main_question"], "How is AI transforming healthcare?")
+        self.assertEqual(result["main_question"], "Test question?")
         self.assertIn("synthesis_overview", result)
         self.assertIn("key_insights", result)
         self.assertGreater(len(result["key_insights"]), 0)
@@ -872,7 +872,7 @@ class TestDeepResearchWorkflowIntegration(unittest.TestCase):
     @patch('agent.function_nodes.research_query_decomposer.call_llm')
     def test_decomposer_to_gatherer_workflow(self, mock_llm):
         """Test workflow from decomposer to gatherer"""
-        # Mock decomposer response
+        # Mock decomposer response with exactly 1 sub-question
         mock_llm.return_value = """
 ```json
 {
@@ -882,7 +882,8 @@ class TestDeepResearchWorkflowIntegration(unittest.TestCase):
     "research_strategy": {"recommended_order": ["q1"]},
     "quality_criteria": {}
 }
-```"""
+```
+"""
         
         # Simulate shared store
         shared = {"research_question": "Test question", "research_depth": "standard"}

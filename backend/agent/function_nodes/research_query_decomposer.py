@@ -263,7 +263,6 @@ Ensure each sub-question is:
         # Add validation status
         decomposition["validation_status"] = "validated"
         decomposition["sub_question_count"] = len(decomposition["sub_questions"])
-        
         return decomposition
     
     def post(self, shared: Dict[str, Any], prep_res: tuple, exec_res: Dict[str, Any]) -> str:

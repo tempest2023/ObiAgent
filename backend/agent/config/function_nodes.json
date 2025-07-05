@@ -38,25 +38,6 @@
       "module_path": "agent.function_nodes.analyze_results",
       "class_name": "AnalyzeResultsNode"
     },
-    "cost_analysis": {
-      "name": "cost_analysis",
-      "description": "Analyze costs and find best value options",
-      "category": "analysis",
-      "permission_level": "none",
-      "inputs": ["options", "criteria"],
-      "outputs": ["analysis_result"],
-      "examples": [
-        {
-          "options": "flight_options",
-          "criteria": "cost_performance",
-          "output": "Cost analysis with recommendations"
-        }
-      ],
-      "estimated_cost": 0.02,
-      "estimated_time": 3,
-      "module_path": "agent.function_nodes.cost_analysis",
-      "class_name": "CostAnalysisNode"
-    },
     "result_summarizer": {
       "name": "result_summarizer",
       "description": "Summarize results and provide recommendations",
@@ -96,16 +77,22 @@
     },
     "permission_request": {
       "name": "permission_request",
-      "description": "Request user permission for sensitive operations",
+      "description": "Request user permission for sensitive operations (e.g., payment, booking, data access, external API, etc.)",
       "category": "communication",
       "permission_level": "none",
-      "inputs": ["operation", "details"],
+      "inputs": ["operation", "details", "permission_type"],
       "outputs": ["permission_granted"],
       "examples": [
         {
           "operation": "payment",
           "details": "Book flight for $850 using saved payment method",
-          "output": "User's permission decision"
+          "output": "User's permission decision (inferred type: payment)"
+        },
+        {
+          "operation": "access database",
+          "details": "Read user table",
+          "permission_type": "data_access",
+          "output": "User's permission decision (explicit type: data_access)"
         }
       ],
       "estimated_cost": 0.0,
