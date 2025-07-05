@@ -347,9 +347,6 @@ pytest agent/test/test_function_nodes.py
 
 # 运行详细输出
 pytest agent/test/test_function_nodes.py -v
-
-# 运行特定测试
-pytest agent/test/test_function_nodes.py::test_flight_search
 ```
 
 ### 测试覆盖范围
@@ -363,8 +360,6 @@ pytest agent/test/test_function_nodes.py::test_flight_search
 - `UserQueryNode` - 用户交互管理
 - `ResultSummarizerNode` - 结果汇总
 - `CostAnalysisNode` - 成本分析逻辑
-- `FlightSearchNode` - 航班搜索模拟
-- `AnalyzeResultsNode` - 搜索结果分析
 - `WebSearchNode` - 网络搜索功能
 
 ### 测试特性

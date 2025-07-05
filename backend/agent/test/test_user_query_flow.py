@@ -155,11 +155,6 @@ workflow:
       inputs: ["from", "to", "date"]
       outputs: ["flight_search_results"]
       requires_permission: false
-    - name: cost_analysis
-      description: Analyze the matched flight options for cost performance.
-      inputs: ["flight_search_results"]
-      outputs: ["cost_analysis"]
-      requires_permission: false
     - name: user_query
       description: Ask the user for their preferred travel date.
       inputs: ["user_preferences"]

@@ -322,9 +322,6 @@ pytest agent/test/test_function_nodes.py
 
 # Run with verbose output
 pytest agent/test/test_function_nodes.py -v
-
-# Run specific test
-pytest agent/test/test_function_nodes.py::test_flight_search
 ```
 
 ### Test Coverage
@@ -338,9 +335,6 @@ The test suite covers all function nodes:
 - `UserQueryNode` - User interaction management
 - `ResultSummarizerNode` - Result summarization
 - `CostAnalysisNode` - Cost analysis logic
-- `FlightSearchNode` - Flight search simulation
-- `AnalyzeResultsNode` - Search result analysis
-- `WebSearchNode` - Web search functionality
 
 ### Test Features
 
