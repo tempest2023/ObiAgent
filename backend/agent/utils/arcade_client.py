@@ -1,318 +1,322 @@
 """
-Arcade API Client Utility
+Arcade.dev API Client
 
-This module provides a centralized client for interacting with the Arcade.dev platform,
-which offers authenticated integrations for various platforms like Gmail, Slack, X, LinkedIn, etc.
-
-The client handles authentication, API calls, and common error handling for Arcade tools.
+This module provides a client for interacting with the Arcade.dev platform,
+enabling authenticated access to various platforms like Gmail, Slack, X, LinkedIn, Discord.
 """
 
 import os
-import logging
+import json
+import urllib.request
+import urllib.parse
+import urllib.error
 from typing import Dict, Any, Optional, List
-from dataclasses import dataclass
-import httpx
-import asyncio
-from openai import OpenAI
+import logging
 
 logger = logging.getLogger(__name__)
-
-@dataclass
-class ArcadeAuthResponse:
-    """Response from Arcade authentication flow"""
-    status: str
-    url: Optional[str] = None
-    token: Optional[str] = None
-    user_id: Optional[str] = None
-
-@dataclass
-class ArcadeToolCall:
-    """Represents a tool call to Arcade platform"""
-    tool_name: str
-    parameters: Dict[str, Any]
-    user_id: str
 
 class ArcadeClientError(Exception):
     """Base exception for Arcade client errors"""
     pass
 
 class ArcadeAuthError(ArcadeClientError):
-    """Authentication related errors"""
+    """Authentication-related errors"""
     pass
 
 class ArcadeAPIError(ArcadeClientError):
-    """API call related errors"""
+    """API-related errors"""
     pass
 
 class ArcadeClient:
     """
-    Client for interacting with Arcade.dev platform
+    Client for interacting with the Arcade.dev API
     
-    Provides methods for:
-    - User authentication via OAuth
-    - Making tool calls to various platforms
-    - Managing user sessions
+    Provides methods for authentication, tool calling, and platform-specific operations.
     """
     
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, base_url: str = "https://api.arcade.dev"):
         """
-        Initialize Arcade client
+        Initialize the Arcade client
         
         Args:
-            api_key: Arcade API key. If not provided, will try to get from ARCADE_API_KEY env var
+            api_key: Arcade API key (defaults to ARCADE_API_KEY environment variable)
+            base_url: Base URL for the Arcade API
         """
-        self.api_key = api_key or os.environ.get("ARCADE_API_KEY")
+        self.api_key = api_key or os.getenv("ARCADE_API_KEY")
         if not self.api_key:
-            raise ArcadeClientError("ARCADE_API_KEY environment variable or api_key parameter is required")
+            raise ArcadeAuthError("Arcade API key is required. Set ARCADE_API_KEY environment variable or pass api_key parameter.")
         
-        self.base_url = "https://api.arcade-ai.com"
-        self.client = OpenAI(
-            base_url=self.base_url,
-            api_key=self.api_key
-        )
+        self.base_url = base_url.rstrip('/')
+        self.session_headers = {
+            'Authorization': f'Bearer {self.api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'PocketFlow-Agent/1.0'
+        }
         
         # Platform-specific tool mappings
         self.platform_tools = {
-            "gmail": {
-                "send_email": "Google.SendEmail",
-                "read_emails": "Google.ReadEmails", 
-                "search_emails": "Google.SearchEmails",
-                "get_email": "Google.GetEmail"
+            'gmail': {
+                'send_email': 'gmail_send_email',
+                'read_emails': 'gmail_read_emails', 
+                'search_emails': 'gmail_search_emails',
+                'auth': 'gmail_auth'
             },
-            "outlook": {
-                "send_email": "Microsoft.SendEmail",
-                "read_emails": "Microsoft.ReadEmails",
-                "search_emails": "Microsoft.SearchEmails"
+            'slack': {
+                'send_message': 'slack_send_message',
+                'get_channels': 'slack_get_channels',
+                'get_messages': 'slack_get_messages',
+                'upload_file': 'slack_upload_file',
+                'auth': 'slack_auth'
             },
-            "slack": {
-                "send_message": "Slack.SendMessage",
-                "get_channels": "Slack.GetChannels",
-                "get_messages": "Slack.GetMessages",
-                "upload_file": "Slack.UploadFile"
+            'x': {
+                'post_tweet': 'x_post_tweet',
+                'get_tweets': 'x_get_tweets',
+                'get_user_profile': 'x_get_user_profile',
+                'like_tweet': 'x_like_tweet',
+                'auth': 'x_auth'
             },
-            "x": {
-                "post_tweet": "X.PostTweet",
-                "get_tweets": "X.GetTweets",
-                "get_user_profile": "X.GetUserProfile",
-                "like_tweet": "X.LikeTweet"
+            'linkedin': {
+                'post_update': 'linkedin_post_update',
+                'get_profile': 'linkedin_get_profile',
+                'send_message': 'linkedin_send_message',
+                'get_connections': 'linkedin_get_connections',
+                'auth': 'linkedin_auth'
             },
-            "linkedin": {
-                "post_update": "LinkedIn.PostUpdate",
-                "get_profile": "LinkedIn.GetProfile", 
-                "send_message": "LinkedIn.SendMessage",
-                "get_connections": "LinkedIn.GetConnections"
-            },
-            "discord": {
-                "send_message": "Discord.SendMessage",
-                "get_channels": "Discord.GetChannels",
-                "get_messages": "Discord.GetMessages",
-                "create_channel": "Discord.CreateChannel"
+            'discord': {
+                'send_message': 'discord_send_message',
+                'get_channels': 'discord_get_channels',
+                'get_messages': 'discord_get_messages',
+                'create_channel': 'discord_create_channel',
+                'auth': 'discord_auth'
             }
         }
-        
-        logger.info("🎮 ArcadeClient initialized successfully")
-
-    def start_auth(self, user_id: str, platform: str, scopes: Optional[List[str]] = None) -> ArcadeAuthResponse:
+    
+    def _make_request(self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Start OAuth authorization process for a platform
+        Make an HTTP request to the Arcade API
         
         Args:
-            user_id: Unique identifier for the user
-            platform: Platform name (e.g., 'google', 'slack', 'x')
-            scopes: List of OAuth scopes to request
+            method: HTTP method (GET, POST, etc.)
+            endpoint: API endpoint (without base URL)
+            data: Request data for POST/PUT requests
             
         Returns:
-            ArcadeAuthResponse with auth status and URL if needed
-        """
-        try:
-            logger.info(f"🔐 Starting auth for user {user_id} on platform {platform}")
+            Response data as dictionary
             
-            # For now, simulate the auth response based on Arcade's pattern
-            # In real implementation, this would call Arcade's auth API
-            auth_response = ArcadeAuthResponse(
-                status="requires_auth",
-                url=f"{self.base_url}/auth/{platform}?user_id={user_id}",
-                user_id=user_id
+        Raises:
+            ArcadeAPIError: If the API request fails
+        """
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        
+        try:
+            # Prepare request
+            req_data = None
+            if data:
+                req_data = json.dumps(data).encode('utf-8')
+            
+            request = urllib.request.Request(
+                url, 
+                data=req_data, 
+                headers=self.session_headers,
+                method=method
             )
             
-            logger.info(f"✅ Auth started for {platform}. Status: {auth_response.status}")
-            return auth_response
-            
+            # Make request
+            logger.debug(f"Making {method} request to {url}")
+            with urllib.request.urlopen(request) as response:
+                response_data = response.read().decode('utf-8')
+                
+                if response.status >= 400:
+                    raise ArcadeAPIError(f"API request failed with status {response.status}: {response_data}")
+                
+                return json.loads(response_data) if response_data else {}
+                
+        except urllib.error.HTTPError as e:
+            error_msg = e.read().decode('utf-8') if e.fp else str(e)
+            logger.error(f"HTTP error in Arcade API request: {e.code} - {error_msg}")
+            raise ArcadeAPIError(f"HTTP {e.code}: {error_msg}")
+        except urllib.error.URLError as e:
+            logger.error(f"URL error in Arcade API request: {e}")
+            raise ArcadeAPIError(f"Network error: {e}")
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error in Arcade API response: {e}")
+            raise ArcadeAPIError(f"Invalid JSON response: {e}")
         except Exception as e:
-            logger.error(f"❌ Failed to start auth for {platform}: {e}")
-            raise ArcadeAuthError(f"Authentication failed for {platform}: {e}")
-
-    def wait_for_auth_completion(self, auth_response: ArcadeAuthResponse, timeout: int = 300) -> ArcadeAuthResponse:
+            logger.error(f"Unexpected error in Arcade API request: {e}")
+            raise ArcadeAPIError(f"Unexpected error: {e}")
+    
+    def call_tool(self, tool_name: str, user_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Wait for OAuth completion (polling-based)
+        Call a specific Arcade tool
         
         Args:
-            auth_response: Initial auth response
-            timeout: Maximum time to wait in seconds
+            tool_name: Name of the tool to call
+            user_id: User ID for authentication context
+            parameters: Tool-specific parameters
             
         Returns:
-            Updated ArcadeAuthResponse with token if successful
-        """
-        logger.info(f"⏳ Waiting for auth completion for user {auth_response.user_id}")
-        
-        # For demo purposes, simulate successful auth
-        # In real implementation, this would poll Arcade's auth status endpoint
-        import time
-        time.sleep(2)  # Simulate waiting
-        
-        auth_response.status = "completed"
-        auth_response.token = f"arcade_token_{auth_response.user_id}"
-        
-        logger.info("✅ Authentication completed successfully")
-        return auth_response
-
-    def make_tool_call(self, tool_call: ArcadeToolCall) -> str:
-        """
-        Make a tool call through Arcade platform
-        
-        Args:
-            tool_call: ArcadeToolCall with tool name, parameters, and user ID
+            Tool execution result
             
-        Returns:
-            Response from the tool call
+        Raises:
+            ArcadeAPIError: If the tool call fails
         """
+        payload = {
+            'tool_name': tool_name,
+            'user_id': user_id,
+            'parameters': parameters
+        }
+        
+        logger.info(f"Calling Arcade tool: {tool_name} for user {user_id}")
+        logger.debug(f"Tool parameters: {parameters}")
+        
         try:
-            logger.info(f"🔧 Making tool call: {tool_call.tool_name} for user {tool_call.user_id}")
-            
-            # Create the prompt based on the tool call
-            prompt = self._create_tool_prompt(tool_call)
-            
-            response = self.client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="gpt-4o-mini",
-                user=tool_call.user_id,
-                tools=[tool_call.tool_name],
-                tool_choice="auto",
-            )
-            
-            result = response.choices[0].message.content
-            logger.info(f"✅ Tool call completed successfully")
-            logger.debug(f"📄 Tool call result: {result}")
-            
-            return result
-            
+            response = self._make_request('POST', '/v1/tools/execute', payload)
+            logger.info(f"Tool {tool_name} executed successfully")
+            return response
         except Exception as e:
-            logger.error(f"❌ Tool call failed: {e}")
-            raise ArcadeAPIError(f"Tool call failed: {e}")
-
-    def _create_tool_prompt(self, tool_call: ArcadeToolCall) -> str:
+            logger.error(f"Failed to call tool {tool_name}: {e}")
+            raise
+    
+    def get_platform_tool_name(self, platform: str, action: str) -> str:
         """
-        Create a natural language prompt for the tool call
+        Get the full tool name for a platform action
         
         Args:
-            tool_call: ArcadeToolCall to convert to prompt
+            platform: Platform name (gmail, slack, x, linkedin, discord)
+            action: Action name (send_message, read_emails, etc.)
             
         Returns:
-            Natural language prompt string
+            Full tool name for Arcade API
+            
+        Raises:
+            ValueError: If platform or action is not supported
         """
-        platform = self._extract_platform_from_tool(tool_call.tool_name)
-        action = self._extract_action_from_tool(tool_call.tool_name)
+        if platform not in self.platform_tools:
+            raise ValueError(f"Unsupported platform: {platform}")
         
-        # Build prompt based on platform and action
-        if platform == "google" and action == "sendemail":
-            return f"Send an email to {tool_call.parameters.get('recipient')} with subject '{tool_call.parameters.get('subject')}' and body '{tool_call.parameters.get('body')}'"
+        if action not in self.platform_tools[platform]:
+            raise ValueError(f"Unsupported action '{action}' for platform '{platform}'")
         
-        elif platform == "slack" and action == "sendmessage":
-            return f"Send a Slack message to {tool_call.parameters.get('channel')} saying: {tool_call.parameters.get('message')}"
-        
-        elif platform == "x" and action == "posttweet":
-            return f"Post a tweet with the text: {tool_call.parameters.get('text')}"
-        
-        elif platform == "linkedin" and action == "postupdate":
-            return f"Post a LinkedIn update with the text: {tool_call.parameters.get('text')}"
-        
-        elif platform == "discord" and action == "sendmessage":
-            return f"Send a Discord message to {tool_call.parameters.get('channel')} saying: {tool_call.parameters.get('message')}"
-        
-        # Default generic prompt
-        return f"Use {tool_call.tool_name} with parameters: {tool_call.parameters}"
-
-    def _extract_platform_from_tool(self, tool_name: str) -> str:
-        """Extract platform name from tool name (e.g., 'Google.SendEmail' -> 'google')"""
-        return tool_name.split('.')[0].lower()
-
-    def _extract_action_from_tool(self, tool_name: str) -> str:
-        """Extract action from tool name (e.g., 'Google.SendEmail' -> 'sendemail')"""
-        return tool_name.split('.')[1].lower()
-
-    def get_available_tools(self, platform: str) -> Dict[str, str]:
+        return self.platform_tools[platform][action]
+    
+    def authenticate_user(self, user_id: str, platform: str, scopes: List[str]) -> Dict[str, Any]:
         """
-        Get available tools for a platform
+        Authenticate a user with a specific platform
         
         Args:
+            user_id: User ID
+            platform: Platform to authenticate with
+            scopes: Required scopes/permissions
+            
+        Returns:
+            Authentication result
+        """
+        tool_name = self.get_platform_tool_name(platform, 'auth')
+        parameters = {
+            'scopes': scopes
+        }
+        
+        return self.call_tool(tool_name, user_id, parameters)
+    
+    def get_oauth_url(self, user_id: str, platform: str, scopes: List[str], redirect_uri: str) -> str:
+        """
+        Get OAuth authorization URL for a platform
+        
+        Args:
+            user_id: User ID
             platform: Platform name
+            scopes: Required scopes
+            redirect_uri: OAuth redirect URI
             
         Returns:
-            Dictionary mapping action names to tool names
+            OAuth authorization URL
         """
-        return self.platform_tools.get(platform.lower(), {})
-
-    def is_user_authenticated(self, user_id: str, platform: str) -> bool:
+        payload = {
+            'user_id': user_id,
+            'platform': platform,
+            'scopes': scopes,
+            'redirect_uri': redirect_uri
+        }
+        
+        response = self._make_request('POST', '/v1/oauth/authorize', payload)
+        return response.get('authorization_url', '')
+    
+    def handle_oauth_callback(self, user_id: str, platform: str, code: str, state: str) -> Dict[str, Any]:
         """
-        Check if user is authenticated for a platform
+        Handle OAuth callback and exchange code for tokens
         
         Args:
-            user_id: User identifier
+            user_id: User ID
             platform: Platform name
+            code: OAuth authorization code
+            state: OAuth state parameter
             
         Returns:
-            True if authenticated, False otherwise
+            Token exchange result
         """
-        # For demo purposes, assume users are authenticated
-        # In real implementation, this would check with Arcade's auth status
-        logger.info(f"🔍 Checking auth status for user {user_id} on {platform}")
-        return True
+        payload = {
+            'user_id': user_id,
+            'platform': platform,
+            'code': code,
+            'state': state
+        }
+        
+        return self._make_request('POST', '/v1/oauth/callback', payload)
 
-def call_arcade_tool(user_id: str, platform: str, action: str, parameters: Dict[str, Any]) -> str:
+
+def call_arcade_tool(tool_name: str, user_id: str, parameters: Dict[str, Any], 
+                    api_key: Optional[str] = None) -> Dict[str, Any]:
     """
-    Convenience function for making Arcade tool calls
+    Convenience function to call an Arcade tool
     
     Args:
-        user_id: User identifier
-        platform: Platform name (gmail, slack, x, linkedin, discord)
-        action: Action to perform (send_email, post_tweet, etc.)
-        parameters: Action parameters
+        tool_name: Name of the tool to call
+        user_id: User ID for authentication context
+        parameters: Tool-specific parameters
+        api_key: Optional API key (defaults to environment variable)
         
     Returns:
-        Result from the tool call
+        Tool execution result
+        
+    Raises:
+        ArcadeClientError: If the tool call fails
     """
-    client = ArcadeClient()
-    
-    # Get the tool name for this platform/action
-    available_tools = client.get_available_tools(platform)
-    tool_name = available_tools.get(action)
-    
-    if not tool_name:
-        raise ValueError(f"Action '{action}' not available for platform '{platform}'. Available actions: {list(available_tools.keys())}")
-    
-    # Create and execute tool call
-    tool_call = ArcadeToolCall(
-        tool_name=tool_name,
-        parameters=parameters,
-        user_id=user_id
-    )
-    
-    return client.make_tool_call(tool_call)
+    client = ArcadeClient(api_key=api_key)
+    return client.call_tool(tool_name, user_id, parameters)
 
-# Example usage functions for testing
+
+def get_arcade_client(api_key: Optional[str] = None) -> ArcadeClient:
+    """
+    Get an Arcade client instance
+    
+    Args:
+        api_key: Optional API key (defaults to environment variable)
+        
+    Returns:
+        Configured ArcadeClient instance
+    """
+    return ArcadeClient(api_key=api_key)
+
+
+# Example usage and testing
 if __name__ == "__main__":
-    # Example: Send an email via Gmail
+    # Example usage
     try:
-        result = call_arcade_tool(
-            user_id="test_user",
-            platform="gmail",
-            action="send_email",
+        client = ArcadeClient()
+        
+        # Example: Send a Gmail email
+        result = client.call_tool(
+            tool_name='gmail_send_email',
+            user_id='test_user',
             parameters={
-                "recipient": "test@example.com",
-                "subject": "Test Email",
-                "body": "This is a test email sent via Arcade"
+                'recipient': 'test@example.com',
+                'subject': 'Test Email',
+                'body': 'This is a test email from Arcade API'
             }
         )
-        print(f"Email sent: {result}")
+        print("Gmail send result:", result)
+        
+    except ArcadeClientError as e:
+        print(f"Arcade client error: {e}")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Unexpected error: {e}")

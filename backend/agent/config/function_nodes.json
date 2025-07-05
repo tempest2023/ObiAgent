@@ -155,7 +155,7 @@
       "name": "gmail_send_email",
       "description": "Send emails via Gmail using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "recipient", "subject", "body", "cc", "bcc", "attachments"],
       "outputs": ["gmail_send_result"],
       "examples": [
@@ -176,7 +176,7 @@
       "name": "gmail_read_emails",
       "description": "Read emails from Gmail using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "max_results", "unread_only", "label"],
       "outputs": ["gmail_emails"],
       "examples": [
@@ -196,7 +196,7 @@
       "name": "gmail_search_emails",
       "description": "Search emails in Gmail using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "search_query", "max_results"],
       "outputs": ["gmail_search_results"],
       "examples": [
@@ -215,8 +215,8 @@
     "gmail_auth": {
       "name": "gmail_auth",
       "description": "Authenticate with Gmail via Arcade",
-      "category": "authentication",
-      "permission_level": "high",
+      "category": "utility",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "scopes"],
       "outputs": ["gmail_auth_status"],
       "examples": [
@@ -235,7 +235,7 @@
       "name": "slack_send_message",
       "description": "Send messages to Slack channels using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "channel", "message", "thread_ts"],
       "outputs": ["slack_send_result"],
       "examples": [
@@ -255,7 +255,7 @@
       "name": "slack_get_channels",
       "description": "Get list of Slack channels using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "basic",
       "inputs": ["user_id", "types", "exclude_archived"],
       "outputs": ["slack_channels"],
       "examples": [
@@ -274,7 +274,7 @@
       "name": "slack_get_messages",
       "description": "Get messages from Slack channels using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "basic",
       "inputs": ["user_id", "channel", "count", "latest"],
       "outputs": ["slack_messages"],
       "examples": [
@@ -294,7 +294,7 @@
       "name": "slack_upload_file",
       "description": "Upload files to Slack using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "file_path", "channels", "title", "initial_comment"],
       "outputs": ["slack_upload_result"],
       "examples": [
@@ -314,8 +314,8 @@
     "slack_auth": {
       "name": "slack_auth",
       "description": "Authenticate with Slack via Arcade",
-      "category": "authentication",
-      "permission_level": "high",
+      "category": "utility",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "scopes"],
       "outputs": ["slack_auth_status"],
       "examples": [
@@ -333,8 +333,8 @@
     "x_post_tweet": {
       "name": "x_post_tweet",
       "description": "Post tweets to X using Arcade API",
-      "category": "social",
-      "permission_level": "high",
+      "category": "communication",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "text", "reply_to", "media_ids"],
       "outputs": ["x_post_result"],
       "examples": [
@@ -352,8 +352,8 @@
     "x_get_tweets": {
       "name": "x_get_tweets",
       "description": "Get tweets from X using Arcade API",
-      "category": "social",
-      "permission_level": "high",
+      "category": "communication",
+      "permission_level": "basic",
       "inputs": ["user_id", "timeline_type", "count", "include_replies"],
       "outputs": ["x_tweets"],
       "examples": [
@@ -372,8 +372,8 @@
     "x_get_user_profile": {
       "name": "x_get_user_profile",
       "description": "Get user profile from X using Arcade API",
-      "category": "social",
-      "permission_level": "high",
+      "category": "communication",
+      "permission_level": "basic",
       "inputs": ["user_id", "target_username", "include_entities"],
       "outputs": ["x_user_profile"],
       "examples": [
@@ -391,8 +391,8 @@
     "x_like_tweet": {
       "name": "x_like_tweet",
       "description": "Like/unlike tweets on X using Arcade API",
-      "category": "social",
-      "permission_level": "high",
+      "category": "communication",
+      "permission_level": "basic",
       "inputs": ["user_id", "tweet_id", "action"],
       "outputs": ["x_like_result"],
       "examples": [
@@ -411,8 +411,8 @@
     "x_auth": {
       "name": "x_auth",
       "description": "Authenticate with X via Arcade",
-      "category": "authentication",
-      "permission_level": "high",
+      "category": "utility",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "scopes"],
       "outputs": ["x_auth_status"],
       "examples": [
@@ -430,8 +430,8 @@
     "linkedin_post_update": {
       "name": "linkedin_post_update",
       "description": "Post updates to LinkedIn using Arcade API",
-      "category": "social",
-      "permission_level": "high",
+      "category": "communication",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "text", "visibility", "media_url"],
       "outputs": ["linkedin_post_result"],
       "examples": [
@@ -450,8 +450,8 @@
     "linkedin_get_profile": {
       "name": "linkedin_get_profile",
       "description": "Get LinkedIn profile using Arcade API",
-      "category": "social",
-      "permission_level": "high",
+      "category": "communication",
+      "permission_level": "basic",
       "inputs": ["user_id", "profile_id", "fields"],
       "outputs": ["linkedin_profile"],
       "examples": [
@@ -470,8 +470,8 @@
     "linkedin_send_message": {
       "name": "linkedin_send_message",
       "description": "Send messages on LinkedIn using Arcade API",
-      "category": "social",
-      "permission_level": "high",
+      "category": "communication",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "recipient_id", "message", "subject"],
       "outputs": ["linkedin_message_result"],
       "examples": [
@@ -490,8 +490,8 @@
     "linkedin_get_connections": {
       "name": "linkedin_get_connections",
       "description": "Get LinkedIn connections using Arcade API",
-      "category": "social",
-      "permission_level": "high",
+      "category": "communication",
+      "permission_level": "basic",
       "inputs": ["user_id", "start", "count", "fields"],
       "outputs": ["linkedin_connections"],
       "examples": [
@@ -510,8 +510,8 @@
     "linkedin_auth": {
       "name": "linkedin_auth",
       "description": "Authenticate with LinkedIn via Arcade",
-      "category": "authentication",
-      "permission_level": "high",
+      "category": "utility",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "scopes"],
       "outputs": ["linkedin_auth_status"],
       "examples": [
@@ -530,7 +530,7 @@
       "name": "discord_send_message",
       "description": "Send messages to Discord channels using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "channel_id", "message", "embed"],
       "outputs": ["discord_send_result"],
       "examples": [
@@ -550,7 +550,7 @@
       "name": "discord_get_channels",
       "description": "Get Discord channels using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "basic",
       "inputs": ["user_id", "guild_id", "channel_types"],
       "outputs": ["discord_channels"],
       "examples": [
@@ -570,7 +570,7 @@
       "name": "discord_get_messages",
       "description": "Get messages from Discord channels using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "basic",
       "inputs": ["user_id", "channel_id", "limit", "before"],
       "outputs": ["discord_messages"],
       "examples": [
@@ -590,7 +590,7 @@
       "name": "discord_create_channel",
       "description": "Create Discord channels using Arcade API",
       "category": "communication",
-      "permission_level": "high",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "guild_id", "name", "type"],
       "outputs": ["discord_create_channel_result"],
       "examples": [
@@ -610,8 +610,8 @@
     "discord_auth": {
       "name": "discord_auth",
       "description": "Authenticate with Discord via Arcade",
-      "category": "authentication",
-      "permission_level": "high",
+      "category": "utility",
+      "permission_level": "sensitive",
       "inputs": ["user_id", "scopes"],
       "outputs": ["discord_auth_status"],
       "examples": [
