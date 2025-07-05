@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class ResultSummarizerNode(Node):
     """
-    General-purpose node to summarize results and provide recommendations using LLM.
+    Summarize results and provide recommendations using LLM.
     Example:
         >>> node = ResultSummarizerNode()
         >>> shared = {"user_message": "Analyze my options...", "analysis": {...}}

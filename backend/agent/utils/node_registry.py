@@ -135,18 +135,6 @@ class NodeRegistry:
         ))
         
         self.register_node(NodeMetadata(
-            name="flight_search",
-            description="Search for flight options and prices",
-            category=NodeCategory.SEARCH,
-            permission_level=PermissionLevel.BASIC,
-            inputs=["origin", "destination", "date", "preferences"],
-            outputs=["flight_options"],
-            examples=[
-                {"origin": "LAX", "destination": "PVG", "date": "2024-03-15", "preferences": "afternoon departure"}
-            ]
-        ))
-        
-        self.register_node(NodeMetadata(
             name="hotel_search", 
             description="Search for hotel options and prices",
             category=NodeCategory.SEARCH,

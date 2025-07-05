@@ -7,7 +7,6 @@ from agent.function_nodes.data_formatter import DataFormatterNode
 from agent.function_nodes.permission_request import PermissionRequestNode
 from agent.function_nodes.user_query import UserQueryNode
 from agent.function_nodes.result_summarizer import ResultSummarizerNode
-from agent.function_nodes.analyze_results import AnalyzeResultsNode
 from agent.function_nodes.web_search import WebSearchNode
 
 # --- FirecrawlScrapeNode ---
@@ -84,18 +83,6 @@ def test_result_summarizer(monkeypatch):
     assert isinstance(result, str)
     node.post(shared, prep_res, result)
     assert "result_summary" in shared
-
-# --- AnalyzeResultsNode ---
-def test_analyze_results(monkeypatch):
-    node = AnalyzeResultsNode()
-    shared = {"query": "best LLM frameworks", "search_results": [{"title": "A"}]}
-    # Patch call_llm
-    monkeypatch.setattr("agent.function_nodes.analyze_results.call_llm", lambda *a, **k: """summary: test\nkey_points: [a]\nfollow_up_queries: []""")
-    prep_res = node.prep(shared)
-    result = node.exec(prep_res)
-    assert isinstance(result, dict)
-    node.post(shared, prep_res, result)
-    assert "analysis" in shared
 
 # --- WebSearchNode ---
 def test_web_search(monkeypatch):

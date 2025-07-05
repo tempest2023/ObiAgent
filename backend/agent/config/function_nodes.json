@@ -19,25 +19,6 @@
       "module_path": "agent.function_nodes.web_search",
       "class_name": "WebSearchNode"
     },
-    "analyze_results": {
-      "name": "analyze_results",
-      "description": "Analyze search results and extract relevant information",
-      "category": "analysis",
-      "permission_level": "none",
-      "inputs": ["search_results", "analysis_criteria"],
-      "outputs": ["analysis_result"],
-      "examples": [
-        {
-          "search_results": "web_search_results",
-          "analysis_criteria": "flight prices and schedules",
-          "output": "Structured analysis of flight options"
-        }
-      ],
-      "estimated_cost": 0.02,
-      "estimated_time": 5,
-      "module_path": "agent.function_nodes.analyze_results",
-      "class_name": "AnalyzeResultsNode"
-    },
     "result_summarizer": {
       "name": "result_summarizer",
       "description": "Summarize results and provide recommendations",
