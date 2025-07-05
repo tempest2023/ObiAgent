@@ -81,16 +81,16 @@ class TestGmailNodes(unittest.TestCase):
             'recipient': 'test@example.com',
             'subject': 'Test Subject',
             'body': 'Test Body'
-                 }
-         
-         result = node.prep(shared)
-         
-         # Check that prep returns the expected data (tuple of user_id, params)
-         self.assertIsInstance(result, tuple)
-         self.assertEqual(len(result), 2)
-         user_id, email_params = result
-         self.assertEqual(user_id, 'test_user')
-         self.assertEqual(email_params.get('recipient'), 'test@example.com')
+        }
+        
+        result = node.prep(shared)
+        
+        # Check that prep returns the expected data (tuple of user_id, params)
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 2)
+        user_id, email_params = result
+        self.assertEqual(user_id, 'test_user')
+        self.assertEqual(email_params.get('recipient'), 'test@example.com')
     
     @patch('agent.utils.arcade_client.ArcadeClient._make_request')
     def test_gmail_send_email_exec(self, mock_request):
@@ -105,12 +105,11 @@ class TestGmailNodes(unittest.TestCase):
         }
         
         node = GmailSendEmailNode()
-        prep_data = {
-            'user_id': 'test_user',
+        prep_data = ('test_user', {
             'recipient': 'test@example.com',
             'subject': 'Test Subject',
             'body': 'Test Body'
-        }
+        })
         
         result = node.exec(prep_data)
         
@@ -138,9 +137,12 @@ class TestSlackNodes(unittest.TestCase):
         
         result = node.prep(shared)
         
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result['user_id'], 'test_user')
-        self.assertEqual(result['channel'], '#general')
+        # Slack nodes also return tuples
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 2)
+        user_id, message_params = result
+        self.assertEqual(user_id, 'test_user')
+        self.assertEqual(message_params.get('channel'), '#general')
 
 class TestXNodes(unittest.TestCase):
     """Test X (Twitter) Arcade nodes"""
@@ -162,9 +164,12 @@ class TestXNodes(unittest.TestCase):
         
         result = node.prep(shared)
         
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result['user_id'], 'test_user')
-        self.assertEqual(result['text'], 'Hello Twitter!')
+        # X nodes also return tuples
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 2)
+        user_id, tweet_params = result
+        self.assertEqual(user_id, 'test_user')
+        self.assertEqual(tweet_params.get('text'), 'Hello Twitter!')
 
 class TestLinkedInNodes(unittest.TestCase):
     """Test LinkedIn Arcade nodes"""
@@ -186,9 +191,12 @@ class TestLinkedInNodes(unittest.TestCase):
         
         result = node.prep(shared)
         
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result['user_id'], 'test_user')
-        self.assertEqual(result['text'], 'Hello LinkedIn!')
+        # LinkedIn nodes also return tuples
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 2)
+        user_id, update_params = result
+        self.assertEqual(user_id, 'test_user')
+        self.assertEqual(update_params.get('text'), 'Hello LinkedIn!')
 
 class TestDiscordNodes(unittest.TestCase):
     """Test Discord Arcade nodes"""
@@ -211,9 +219,12 @@ class TestDiscordNodes(unittest.TestCase):
         
         result = node.prep(shared)
         
-        self.assertIsInstance(result, dict)
-        self.assertEqual(result['user_id'], 'test_user')
-        self.assertEqual(result['channel_id'], '1234567890')
+        # Discord nodes also return tuples
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 2)
+        user_id, message_params = result
+        self.assertEqual(user_id, 'test_user')
+        self.assertEqual(message_params.get('channel_id'), '1234567890')
 
 def run_basic_tests():
     """Run basic functionality tests"""
