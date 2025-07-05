@@ -1,6 +1,7 @@
 import os
 import pytest
 import importlib
+from unittest.mock import Mock, patch
 
 from agent.function_nodes.firecrawl_scrape import FirecrawlScrapeNode
 from agent.function_nodes.flight_booking import FlightBookingNode
@@ -126,18 +127,45 @@ def test_analyze_results(monkeypatch):
     assert "analysis" in shared
 
 # --- WebSearchNode ---
-def test_web_search():
+@patch('agent.function_nodes.web_search.DDGS')
+def test_web_search(mock_ddgs_class):
+    """Test web search with mocked DuckDuckGo to avoid rate limits in CI"""
     if importlib.util.find_spec("duckduckgo_search") is None:
         pytest.skip("duckduckgo_search not installed")
+    
+    # Mock the search results
+    mock_ddgs_instance = Mock()
+    mock_ddgs_instance.text.return_value = [
+        {
+            'title': 'OpenAI GPT-4 Overview',
+            'body': 'GPT-4 is a powerful language model by OpenAI',
+            'href': 'https://openai.com/gpt-4'
+        },
+        {
+            'title': 'GPT-4 Technical Details',
+            'body': 'Technical specifications and capabilities of GPT-4',
+            'href': 'https://openai.com/research/gpt-4'
+        }
+    ]
+    mock_ddgs_class.return_value = mock_ddgs_instance
+    
     node = WebSearchNode()
     shared = {"query": "OpenAI GPT-4", "num_results": 2}
     prep_res = node.prep(shared)
     result = node.exec(prep_res)
+    
+    # Verify results structure
     assert isinstance(result, list)
-    assert len(result) > 0
+    assert len(result) == 2
     for item in result:
         assert "title" in item
         assert "snippet" in item
         assert "link" in item
+    
+    # Verify specific content
+    assert result[0]["title"] == "OpenAI GPT-4 Overview"
+    assert result[0]["snippet"] == "GPT-4 is a powerful language model by OpenAI"
+    assert result[0]["link"] == "https://openai.com/gpt-4"
+    
     node.post(shared, prep_res, result)
     assert "search_results" in shared 

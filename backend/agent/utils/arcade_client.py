@@ -264,14 +264,15 @@ class ArcadeClient:
         return self._make_request('POST', '/v1/oauth/callback', payload)
 
 
-def call_arcade_tool(tool_name: str, user_id: str, parameters: Dict[str, Any], 
+def call_arcade_tool(user_id: str, platform: str, action: str, parameters: Dict[str, Any], 
                     api_key: Optional[str] = None) -> Dict[str, Any]:
     """
-    Convenience function to call an Arcade tool
+    Convenience function to call an Arcade tool using platform and action
     
     Args:
-        tool_name: Name of the tool to call
         user_id: User ID for authentication context
+        platform: Platform name (gmail, slack, x, linkedin, discord)
+        action: Action name (send_email, post_tweet, etc.)
         parameters: Tool-specific parameters
         api_key: Optional API key (defaults to environment variable)
         
@@ -282,6 +283,10 @@ def call_arcade_tool(tool_name: str, user_id: str, parameters: Dict[str, Any],
         ArcadeClientError: If the tool call fails
     """
     client = ArcadeClient(api_key=api_key)
+    
+    # Get the tool name from platform and action
+    tool_name = client.get_platform_tool_name(platform, action)
+    
     return client.call_tool(tool_name, user_id, parameters)
 
 
