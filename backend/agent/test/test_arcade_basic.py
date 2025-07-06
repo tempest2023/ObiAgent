@@ -11,50 +11,63 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 def test_arcade_imports():
-    """Test that all Arcade modules can be imported"""
-    try:
-        # Test arcade client import
-        from agent.utils.arcade_client import ArcadeClient, call_arcade_tool
-        print("✅ Arcade client imported successfully")
-        
-        # Test Gmail nodes
-        from agent.function_nodes.gmail_arcade import (
-            GmailSendEmailNode, GmailReadEmailsNode, GmailSearchEmailsNode, GmailAuthNode
-        )
-        print("✅ Gmail nodes imported successfully")
-        
-        # Test Slack nodes
-        from agent.function_nodes.slack_arcade import (
-            SlackSendMessageNode, SlackGetChannelsNode, SlackGetMessagesNode, 
-            SlackUploadFileNode, SlackAuthNode
-        )
-        print("✅ Slack nodes imported successfully")
-        
-        # Test X nodes
-        from agent.function_nodes.x_arcade import (
-            XPostTweetNode, XGetTweetsNode, XGetUserProfileNode, XLikeTweetNode, XAuthNode
-        )
-        print("✅ X nodes imported successfully")
-        
-        # Test LinkedIn nodes
-        from agent.function_nodes.linkedin_arcade import (
-            LinkedInPostUpdateNode, LinkedInGetProfileNode, LinkedInSendMessageNode,
-            LinkedInGetConnectionsNode, LinkedInAuthNode
-        )
-        print("✅ LinkedIn nodes imported successfully")
-        
-        # Test Discord nodes
-        from agent.function_nodes.discord_arcade import (
-            DiscordSendMessageNode, DiscordGetChannelsNode, DiscordGetMessagesNode,
-            DiscordCreateChannelNode, DiscordAuthNode
-        )
-        print("✅ Discord nodes imported successfully")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Import error: {e}")
-        return False
+    """Test that all Arcade modules can be imported and classes exist"""
+    # Arcade client
+    from agent.utils.arcade_client import ArcadeClient, call_arcade_tool
+    assert ArcadeClient is not None
+    assert call_arcade_tool is not None
+
+    # Gmail nodes
+    from agent.function_nodes.gmail_arcade import (
+        GmailSendEmailNode, GmailReadEmailsNode, GmailSearchEmailsNode, GmailAuthNode
+    )
+    assert GmailSendEmailNode is not None
+    assert GmailReadEmailsNode is not None
+    assert GmailSearchEmailsNode is not None
+    assert GmailAuthNode is not None
+
+    # Slack nodes
+    from agent.function_nodes.slack_arcade import (
+        SlackSendMessageNode, SlackGetChannelsNode, SlackGetMessagesNode, 
+        SlackUploadFileNode, SlackAuthNode
+    )
+    assert SlackSendMessageNode is not None
+    assert SlackGetChannelsNode is not None
+    assert SlackGetMessagesNode is not None
+    assert SlackUploadFileNode is not None
+    assert SlackAuthNode is not None
+
+    # X nodes
+    from agent.function_nodes.x_arcade import (
+        XPostTweetNode, XGetTweetsNode, XGetUserProfileNode, XLikeTweetNode, XAuthNode
+    )
+    assert XPostTweetNode is not None
+    assert XGetTweetsNode is not None
+    assert XGetUserProfileNode is not None
+    assert XLikeTweetNode is not None
+    assert XAuthNode is not None
+
+    # LinkedIn nodes
+    from agent.function_nodes.linkedin_arcade import (
+        LinkedInPostUpdateNode, LinkedInGetProfileNode, LinkedInSendMessageNode,
+        LinkedInGetConnectionsNode, LinkedInAuthNode
+    )
+    assert LinkedInPostUpdateNode is not None
+    assert LinkedInGetProfileNode is not None
+    assert LinkedInSendMessageNode is not None
+    assert LinkedInGetConnectionsNode is not None
+    assert LinkedInAuthNode is not None
+
+    # Discord nodes
+    from agent.function_nodes.discord_arcade import (
+        DiscordSendMessageNode, DiscordGetChannelsNode, DiscordGetMessagesNode,
+        DiscordCreateChannelNode, DiscordAuthNode
+    )
+    assert DiscordSendMessageNode is not None
+    assert DiscordGetChannelsNode is not None
+    assert DiscordGetMessagesNode is not None
+    assert DiscordCreateChannelNode is not None
+    assert DiscordAuthNode is not None
 
 def test_arcade_client_basic():
     """Test basic ArcadeClient functionality"""
