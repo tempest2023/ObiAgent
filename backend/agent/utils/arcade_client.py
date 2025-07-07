@@ -7,11 +7,9 @@ enabling authenticated access to various platforms like Gmail, Slack, X, LinkedI
 
 import os
 import json
-import urllib.request
-import urllib.parse
-import urllib.error
 from typing import Dict, Any, Optional, List
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -93,49 +91,23 @@ class ArcadeClient:
     
     def _make_request(self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Make an HTTP request to the Arcade API
-        
-        Args:
-            method: HTTP method (GET, POST, etc.)
-            endpoint: API endpoint (without base URL)
-            data: Request data for POST/PUT requests
-            
-        Returns:
-            Response data as dictionary
-            
-        Raises:
-            ArcadeAPIError: If the API request fails
+        Make an HTTP request to the Arcade API using httpx
         """
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        
         try:
-            # Prepare request
-            req_data = None
-            if data:
-                req_data = json.dumps(data).encode('utf-8')
-            
-            request = urllib.request.Request(
-                url, 
-                data=req_data, 
-                headers=self.session_headers,
-                method=method
-            )
-            
-            # Make request
             logger.debug(f"Making {method} request to {url}")
-            with urllib.request.urlopen(request) as response:
-                response_data = response.read().decode('utf-8')
-                
-                if response.status >= 400:
-                    raise ArcadeAPIError(f"API request failed with status {response.status}: {response_data}")
-                
-                return json.loads(response_data) if response_data else {}
-                
-        except urllib.error.HTTPError as e:
-            error_msg = e.read().decode('utf-8') if e.fp else str(e)
-            logger.error(f"HTTP error in Arcade API request: {e.code} - {error_msg}")
-            raise ArcadeAPIError(f"HTTP {e.code}: {error_msg}")
-        except urllib.error.URLError as e:
+            if method.upper() == "GET":
+                response = httpx.get(url, headers=self.session_headers, timeout=30)
+            else:
+                response = httpx.request(method.upper(), url, headers=self.session_headers, json=data, timeout=30)
+            response.raise_for_status()
+            if response.text:
+                return response.json()
+            return {}
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error in Arcade API request: {e.response.status_code} - {e.response.text}")
+            raise ArcadeAPIError(f"HTTP {e.response.status_code}: {e.response.text}")
+        except httpx.RequestError as e:
             logger.error(f"URL error in Arcade API request: {e}")
             raise ArcadeAPIError(f"Network error: {e}")
         except json.JSONDecodeError as e:

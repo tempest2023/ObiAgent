@@ -1,11 +1,9 @@
 import logging
 import os
-import urllib.request
-import urllib.parse
-import urllib.error
 import json
 from pocketflow import Node
 from typing import Dict, Any
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -38,25 +36,17 @@ class FirecrawlScrapeNode(Node):
         payload = {"url": url}
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         try:
-            # Convert payload to JSON bytes
-            data = json.dumps(payload).encode('utf-8')
-            
-            # Create request
-            request = urllib.request.Request(endpoint, data=data, headers=headers)
-            request.get_method = lambda: 'POST'
-            
-            # Make request
-            with urllib.request.urlopen(request, timeout=30) as response:
-                response_data = response.read().decode('utf-8')
-                data = json.loads(response_data)
-                logger.info(f"✅ FirecrawlScrapeNode: Scrape successful, keys: {list(data.keys())}")
-                return data
-        except urllib.error.HTTPError as e:
-            logger.error(f"❌ FirecrawlScrapeNode: HTTP error: {e}")
-            return {"error": f"HTTP error: {e}"}
-        except urllib.error.URLError as e:
-            logger.error(f"❌ FirecrawlScrapeNode: URL error: {e}")
-            return {"error": f"URL error: {e}"}
+            response = httpx.post(endpoint, json=payload, headers=headers, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            logger.info(f"✅ FirecrawlScrapeNode: Scrape successful, keys: {list(data.keys())}")
+            return data
+        except httpx.HTTPStatusError as e:
+            logger.error(f"❌ FirecrawlScrapeNode: HTTP error: {e.response.status_code} - {e.response.text}")
+            return {"error": f"HTTP error: {e.response.status_code} - {e.response.text}"}
+        except httpx.RequestError as e:
+            logger.error(f"❌ FirecrawlScrapeNode: Request error: {e}")
+            return {"error": f"Request error: {e}"}
         except Exception as e:
             logger.error(f"❌ FirecrawlScrapeNode: Scrape failed: {e}")
             return {"error": str(e)}

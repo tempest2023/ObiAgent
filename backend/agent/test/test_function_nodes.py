@@ -29,13 +29,12 @@ class TestFunctionNodes(unittest.TestCase):
         node = FirecrawlScrapeNode()
         shared = {"url": "https://example.com"}
         
-        # Mock urllib.request.urlopen
-        with patch('urllib.request.urlopen') as mock_urlopen:
+        # Mock httpx.post
+        with patch('httpx.post') as mock_post:
             mock_response = Mock()
-            mock_response.read.return_value = b'{"markdown": "# Title", "json": {"title": "Title"}}'
-            mock_response.__enter__ = Mock(return_value=mock_response)
-            mock_response.__exit__ = Mock(return_value=None)
-            mock_urlopen.return_value = mock_response
+            mock_response.json.return_value = {"markdown": "# Title", "json": {"title": "Title"}}
+            mock_response.raise_for_status = Mock()
+            mock_post.return_value = mock_response
             
             prep_res = node.prep(shared)
             self.assertIsNotNone(prep_res)
