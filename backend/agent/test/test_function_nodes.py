@@ -2,7 +2,6 @@ import os
 import pytest
 import importlib
 
-from agent.function_nodes.firecrawl_scrape import FirecrawlScrapeNode
 from agent.function_nodes.data_formatter import DataFormatterNode
 from agent.function_nodes.permission_request import PermissionRequestNode
 from agent.function_nodes.user_query import UserQueryNode
@@ -11,15 +10,16 @@ from agent.function_nodes.web_search import WebSearchNode
 
 # --- FirecrawlScrapeNode ---
 def test_firecrawl_scrape(monkeypatch):
-    node = FirecrawlScrapeNode()
-    shared = {"url": "https://example.com"}
+    import httpx
     monkeypatch.setenv("FIRECRAWL_API_KEY", "dummy-key")
-    # Mock requests.post
-    import requests
+    # Mock httpx.post
     class DummyResp:
         def raise_for_status(self): pass
         def json(self): return {"markdown": "# Title", "json": {"title": "Title"}}
-    monkeypatch.setattr(requests, "post", lambda *a, **k: DummyResp())
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: DummyResp())
+    from agent.function_nodes.firecrawl_scrape import FirecrawlScrapeNode
+    node = FirecrawlScrapeNode()
+    shared = {"url": "https://example.com"}
     prep_res = node.prep(shared)
     result = node.exec(prep_res)
     assert "markdown" in result

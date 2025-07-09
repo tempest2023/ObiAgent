@@ -9,7 +9,7 @@ import os
 import json
 from typing import Dict, Any, Optional, List
 import logging
-import httpx
+from arcadepy import Arcade
 
 logger = logging.getLogger(__name__)
 
@@ -27,31 +27,14 @@ class ArcadeAPIError(ArcadeClientError):
 
 class ArcadeClient:
     """
-    Client for interacting with the Arcade.dev API
-    
-    Provides methods for authentication, tool calling, and platform-specific operations.
+    Client for interacting with the Arcade.dev API using the official Arcade SDK (arcadepy)
     """
-    
-    def __init__(self, api_key: Optional[str] = None, base_url: str = "https://api.arcade.dev"):
-        """
-        Initialize the Arcade client
-        
-        Args:
-            api_key: Arcade API key (defaults to ARCADE_API_KEY environment variable)
-            base_url: Base URL for the Arcade API
-        """
+    def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("ARCADE_API_KEY")
         if not self.api_key:
             raise ArcadeAuthError("Arcade API key is required. Set ARCADE_API_KEY environment variable or pass api_key parameter.")
-        
-        self.base_url = base_url.rstrip('/')
-        self.session_headers = {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json',
-            'User-Agent': 'PocketFlow-Agent/1.0'
-        }
-        
-        # Platform-specific tool mappings
+        self.client = Arcade(api_key=self.api_key)
+        # Platform-specific tool mappings (for legacy compatibility)
         self.platform_tools = {
             'gmail': {
                 'send_email': 'gmail_send_email',
@@ -89,60 +72,21 @@ class ArcadeClient:
             }
         }
     
-    def _make_request(self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """
-        Make an HTTP request to the Arcade API using httpx
-        """
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        try:
-            logger.debug(f"Making {method} request to {url}")
-            if method.upper() == "GET":
-                response = httpx.get(url, headers=self.session_headers, timeout=30)
-            else:
-                response = httpx.request(method.upper(), url, headers=self.session_headers, json=data, timeout=30)
-            response.raise_for_status()
-            if response.text:
-                return response.json()
-            return {}
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error in Arcade API request: {e.response.status_code} - {e.response.text}")
-            raise ArcadeAPIError(f"HTTP {e.response.status_code}: {e.response.text}")
-        except httpx.RequestError as e:
-            logger.error(f"URL error in Arcade API request: {e}")
-            raise ArcadeAPIError(f"Network error: {e}")
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error in Arcade API response: {e}")
-            raise ArcadeAPIError(f"Invalid JSON response: {e}")
-        except Exception as e:
-            logger.error(f"Unexpected error in Arcade API request: {e}")
-            raise ArcadeAPIError(f"Unexpected error: {e}")
+    # All HTTP logic is now handled by the Arcade SDK
     
     def call_tool(self, tool_name: str, user_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Call a specific Arcade tool
-        
-        Args:
-            tool_name: Name of the tool to call
-            user_id: User ID for authentication context
-            parameters: Tool-specific parameters
-            
-        Returns:
-            Tool execution result
-            
-        Raises:
-            ArcadeAPIError: If the tool call fails
+        Call a specific Arcade tool using the official SDK
         """
-        payload = {
-            'tool_name': tool_name,
-            'user_id': user_id,
-            'parameters': parameters
-        }
-        
         logger.info(f"Calling Arcade tool: {tool_name} for user {user_id}")
         logger.debug(f"Tool parameters: {parameters}")
-        
         try:
-            response = self._make_request('POST', '/v1/tools/execute', payload)
+            # Use the Arcade SDK's tool execution method
+            response = self.client.tools.execute(
+                tool_name=tool_name,
+                user_id=user_id,
+                parameters=parameters
+            )
             logger.info(f"Tool {tool_name} executed successfully")
             return response
         except Exception as e:
@@ -173,67 +117,30 @@ class ArcadeClient:
     
     def authenticate_user(self, user_id: str, platform: str, scopes: List[str]) -> Dict[str, Any]:
         """
-        Authenticate a user with a specific platform
-        
-        Args:
-            user_id: User ID
-            platform: Platform to authenticate with
-            scopes: Required scopes/permissions
-            
-        Returns:
-            Authentication result
+        Authenticate a user with a specific platform using the Arcade SDK
         """
         tool_name = self.get_platform_tool_name(platform, 'auth')
-        parameters = {
-            'scopes': scopes
-        }
-        
+        parameters = {'scopes': scopes}
         return self.call_tool(tool_name, user_id, parameters)
-    
+
     def get_oauth_url(self, user_id: str, platform: str, scopes: List[str], redirect_uri: str) -> str:
         """
-        Get OAuth authorization URL for a platform
-        
-        Args:
-            user_id: User ID
-            platform: Platform name
-            scopes: Required scopes
-            redirect_uri: OAuth redirect URI
-            
-        Returns:
-            OAuth authorization URL
+        Get OAuth authorization URL for a platform using the Arcade SDK
         """
-        payload = {
-            'user_id': user_id,
-            'platform': platform,
-            'scopes': scopes,
-            'redirect_uri': redirect_uri
-        }
-        
-        response = self._make_request('POST', '/v1/oauth/authorize', payload)
+        # The Arcade SDK may provide a direct method for this; if not, use a tool call
+        tool_name = self.get_platform_tool_name(platform, 'auth')
+        parameters = {'scopes': scopes, 'redirect_uri': redirect_uri}
+        response = self.call_tool(tool_name, user_id, parameters)
         return response.get('authorization_url', '')
-    
+
     def handle_oauth_callback(self, user_id: str, platform: str, code: str, state: str) -> Dict[str, Any]:
         """
-        Handle OAuth callback and exchange code for tokens
-        
-        Args:
-            user_id: User ID
-            platform: Platform name
-            code: OAuth authorization code
-            state: OAuth state parameter
-            
-        Returns:
-            Token exchange result
+        Handle OAuth callback and exchange code for tokens using the Arcade SDK
         """
-        payload = {
-            'user_id': user_id,
-            'platform': platform,
-            'code': code,
-            'state': state
-        }
-        
-        return self._make_request('POST', '/v1/oauth/callback', payload)
+        # The Arcade SDK may provide a direct method for this; if not, use a tool call
+        tool_name = self.get_platform_tool_name(platform, 'auth')
+        parameters = {'code': code, 'state': state}
+        return self.call_tool(tool_name, user_id, parameters)
 
 
 def call_arcade_tool(user_id: str, platform: str, action: str, parameters: Dict[str, Any], 
@@ -274,6 +181,32 @@ def get_arcade_client(api_key: Optional[str] = None) -> ArcadeClient:
     """
     return ArcadeClient(api_key=api_key)
 
+
+def is_authorization_required(result: dict) -> bool:
+    """
+    Detect if the Arcade API result indicates authorization is required.
+    """
+    if not isinstance(result, dict):
+        return False
+    # Arcade convention: look for 'authorization_required' or specific error codes/messages
+    if result.get("authorization_required"):
+        return True
+    if "auth_url" in result or "authorization_url" in result:
+        return True
+    if result.get("error") and ("auth" in result["error"].lower() or "authorize" in result["error"].lower()):
+        return True
+    return False
+
+def is_authorization_required_exception(exc: Exception) -> bool:
+    """
+    Detect if an exception is due to authorization required (ArcadeAuthError or similar).
+    """
+    if hasattr(exc, "__class__") and exc.__class__.__name__ == "ArcadeAuthError":
+        return True
+    msg = str(exc).lower()
+    if "auth" in msg or "authorize" in msg or "token" in msg:
+        return True
+    return False
 
 # Example usage and testing
 if __name__ == "__main__":

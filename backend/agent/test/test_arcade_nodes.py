@@ -424,6 +424,105 @@ class TestWebSearchMocking(unittest.TestCase):
             # since we're testing that the node handles errors gracefully
             pass
 
+class TestAuthorizationRequiredLogic(unittest.TestCase):
+    """Test that nodes handle authorization-required responses correctly"""
+    def setUp(self):
+        os.environ['ARCADE_API_KEY'] = 'test_key_123'
+
+    @patch('agent.function_nodes.gmail_arcade.call_arcade_tool')
+    def test_gmail_send_email_auth_required(self, mock_call):
+        from agent.function_nodes.gmail_arcade import GmailSendEmailNode
+        from agent.utils.arcade_client import is_authorization_required
+        # Mock auth-required response
+        mock_call.return_value = {"authorization_required": True, "url": "https://auth.url", "message": "Please authorize Gmail."}
+        node = GmailSendEmailNode()
+        prep_data = ('test_user', {'recipient': 'test@example.com', 'subject': 'Test', 'body': 'Body'})
+        exec_res = node.exec(prep_data)
+        shared = {}
+        action = node.post(shared, prep_data, exec_res)
+        self.assertTrue(is_authorization_required(exec_res))
+        self.assertEqual(shared["arcade_auth_url"], "https://auth.url")
+        self.assertIn("authorize", shared["arcade_auth_message"].lower())
+        self.assertEqual(action, "wait_for_authorization")
+
+    @patch('agent.function_nodes.slack_arcade.call_arcade_tool')
+    def test_slack_send_message_auth_required(self, mock_call):
+        from agent.function_nodes.slack_arcade import SlackSendMessageNode
+        from agent.utils.arcade_client import is_authorization_required
+        mock_call.return_value = {"authorization_required": True, "url": "https://auth.url", "message": "Please authorize Slack."}
+        node = SlackSendMessageNode()
+        prep_data = ('test_user', {'channel': '#general', 'message': 'Hello'})
+        exec_res = node.exec(prep_data)
+        shared = {}
+        action = node.post(shared, prep_data, exec_res)
+        self.assertTrue(is_authorization_required(exec_res))
+        self.assertEqual(shared["arcade_auth_url"], "https://auth.url")
+        self.assertIn("authorize", shared["arcade_auth_message"].lower())
+        self.assertEqual(action, "wait_for_authorization")
+
+    @patch('agent.function_nodes.x_arcade.call_arcade_tool')
+    def test_x_post_tweet_auth_required(self, mock_call):
+        from agent.function_nodes.x_arcade import XPostTweetNode
+        from agent.utils.arcade_client import is_authorization_required
+        mock_call.return_value = {"authorization_required": True, "url": "https://auth.url", "message": "Please authorize X."}
+        node = XPostTweetNode()
+        prep_data = ('test_user', {'text': 'Hello X!'})
+        exec_res = node.exec(prep_data)
+        shared = {}
+        action = node.post(shared, prep_data, exec_res)
+        self.assertTrue(is_authorization_required(exec_res))
+        self.assertEqual(shared["arcade_auth_url"], "https://auth.url")
+        self.assertIn("authorize", shared["arcade_auth_message"].lower())
+        self.assertEqual(action, "wait_for_authorization")
+
+    @patch('agent.function_nodes.linkedin_arcade.call_arcade_tool')
+    def test_linkedin_post_update_auth_required(self, mock_call):
+        from agent.function_nodes.linkedin_arcade import LinkedInPostUpdateNode
+        from agent.utils.arcade_client import is_authorization_required
+        mock_call.return_value = {"authorization_required": True, "url": "https://auth.url", "message": "Please authorize LinkedIn."}
+        node = LinkedInPostUpdateNode()
+        prep_data = ('test_user', {'text': 'Hello LinkedIn!'})
+        exec_res = node.exec(prep_data)
+        shared = {}
+        action = node.post(shared, prep_data, exec_res)
+        self.assertTrue(is_authorization_required(exec_res))
+        self.assertEqual(shared["arcade_auth_url"], "https://auth.url")
+        self.assertIn("authorize", shared["arcade_auth_message"].lower())
+        self.assertEqual(action, "wait_for_authorization")
+
+    @patch('agent.function_nodes.discord_arcade.call_arcade_tool')
+    def test_discord_send_message_auth_required(self, mock_call):
+        from agent.function_nodes.discord_arcade import DiscordSendMessageNode
+        from agent.utils.arcade_client import is_authorization_required
+        mock_call.return_value = {"authorization_required": True, "url": "https://auth.url", "message": "Please authorize Discord."}
+        node = DiscordSendMessageNode()
+        prep_data = ('test_user', {'channel_id': '123', 'message': 'Hello Discord!'})
+        exec_res = node.exec(prep_data)
+        shared = {}
+        action = node.post(shared, prep_data, exec_res)
+        self.assertTrue(is_authorization_required(exec_res))
+        self.assertEqual(shared["arcade_auth_url"], "https://auth.url")
+        self.assertIn("authorize", shared["arcade_auth_message"].lower())
+        self.assertEqual(action, "wait_for_authorization")
+
+class TestArcadeUtils(unittest.TestCase):
+    def test_is_authorization_required(self):
+        from agent.utils.arcade_client import is_authorization_required
+        self.assertTrue(is_authorization_required({"authorization_required": True}))
+        self.assertTrue(is_authorization_required({"authorization_url": "https://auth"}))
+        self.assertTrue(is_authorization_required({"error": "auth required"}))
+        self.assertFalse(is_authorization_required({"status": "success"}))
+    def test_is_authorization_required_exception(self):
+        from agent.utils.arcade_client import is_authorization_required_exception
+        class DummyAuthError(Exception): pass
+        class DummyArcadeAuthError(Exception): pass
+        exc1 = DummyAuthError("auth required")
+        exc2 = DummyArcadeAuthError()
+        exc2.__class__.__name__ = "ArcadeAuthError"
+        self.assertTrue(is_authorization_required_exception(exc1))
+        self.assertTrue(is_authorization_required_exception(exc2))
+        self.assertFalse(is_authorization_required_exception(Exception("random error")))
+
 def run_basic_tests():
     """Run basic functionality tests"""
     print("🧪 Running basic Arcade integration tests...")
@@ -446,6 +545,13 @@ def run_basic_tests():
         suite.addTest(TestLinkedInNodes('test_linkedin_post_update_prep'))
         suite.addTest(TestDiscordNodes('test_discord_send_message_prep'))
         suite.addTest(TestWebSearchMocking('test_web_search_mocked'))
+        suite.addTest(TestAuthorizationRequiredLogic('test_gmail_send_email_auth_required'))
+        suite.addTest(TestAuthorizationRequiredLogic('test_slack_send_message_auth_required'))
+        suite.addTest(TestAuthorizationRequiredLogic('test_x_post_tweet_auth_required'))
+        suite.addTest(TestAuthorizationRequiredLogic('test_linkedin_post_update_auth_required'))
+        suite.addTest(TestAuthorizationRequiredLogic('test_discord_send_message_auth_required'))
+        suite.addTest(TestArcadeUtils('test_is_authorization_required'))
+        suite.addTest(TestArcadeUtils('test_is_authorization_required_exception'))
         
         # Run tests
         runner = unittest.TextTestRunner(verbosity=2)

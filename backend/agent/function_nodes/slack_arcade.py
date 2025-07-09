@@ -70,52 +70,42 @@ class SlackSendMessageNode(Node):
         return user_id, message_params
     
     def exec(self, inputs):
-        """
-        Execute message sending via Arcade Slack API
-        
-        Args:
-            inputs: Tuple of (user_id, message_params)
-            
-        Returns:
-            Response from Slack API via Arcade
-        """
         user_id, message_params = inputs
-        
         try:
-            logger.info(f"📤 SlackSendMessageNode: Sending message via Arcade")
-            
+            logger.info(f"\ud83d\udce4 SlackSendMessageNode: Sending message via Arcade")
             result = call_arcade_tool(
                 user_id=user_id,
                 platform="slack",
                 action="send_message",
                 parameters=message_params
             )
-            
-            logger.info(f"✅ SlackSendMessageNode: Message sent successfully")
+            from agent.utils.arcade_client import is_authorization_required
+            if is_authorization_required(result):
+                return {"authorization_required": True, **result}
+            logger.info(f"\u2705 SlackSendMessageNode: Message sent successfully")
             return result
-            
         except ArcadeClientError as e:
-            logger.error(f"❌ SlackSendMessageNode: Arcade client error: {e}")
+            from agent.utils.arcade_client import is_authorization_required_exception
+            if is_authorization_required_exception(e):
+                return {"authorization_required": True, "error": str(e), "url": getattr(e, "url", None)}
+            logger.error(f"\u274c SlackSendMessageNode: Arcade client error: {e}")
             raise RuntimeError(f"Failed to send Slack message via Arcade: {e}")
         except Exception as e:
-            logger.error(f"❌ SlackSendMessageNode: Unexpected error: {e}")
+            logger.error(f"\u274c SlackSendMessageNode: Unexpected error: {e}")
             raise RuntimeError(f"Slack message sending failed: {e}")
     
     def post(self, shared, prep_res, exec_res):
-        """
-        Store message sending result
-        
-        Args:
-            shared: Shared data store
-            prep_res: Result from prep method
-            exec_res: Result from exec method
-        """
-        logger.info("💾 SlackSendMessageNode: Storing message result")
+        from agent.utils.arcade_client import is_authorization_required
+        if is_authorization_required(exec_res):
+            shared["arcade_auth_url"] = exec_res.get("url")
+            shared["arcade_auth_message"] = exec_res.get("message", exec_res.get("error", "Authorization required for Slack."))
+            return "wait_for_authorization"
+        logger.info("\ud83d\udcbe SlackSendMessageNode: Storing message result")
         shared["slack_send_result"] = exec_res
         shared["last_slack_message"] = {
             "channel": prep_res[1]["channel"],
             "message": prep_res[1]["message"],
-            "timestamp": exec_res
+            "result": exec_res
         }
         return "default"
 

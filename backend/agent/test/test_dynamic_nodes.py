@@ -11,6 +11,7 @@ This script tests:
 import logging
 import unittest
 from unittest.mock import Mock, patch
+import pytest
 from agent.utils.node_registry import node_registry, NodeCategory
 from agent.utils.node_loader import node_loader
 
@@ -136,13 +137,13 @@ class TestDynamicNodes(unittest.TestCase):
         """Test dynamic node loading"""
         test_node_loader()
     
-    def test_node_execution_unittest(self):
-        """Test node execution with mocking"""
-        test_node_execution()
-    
     def test_user_query_node_unittest(self):
         """Test user query node specifically"""
         test_user_query_node()
+
+@pytest.mark.usefixtures("monkeypatch")
+def test_node_execution_pytest(monkeypatch):
+    test_node_execution(monkeypatch)
 
 if __name__ == '__main__':
     unittest.main() 

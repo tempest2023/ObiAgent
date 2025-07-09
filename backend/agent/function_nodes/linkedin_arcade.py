@@ -72,51 +72,39 @@ class LinkedInPostUpdateNode(Node):
         return user_id, update_params
     
     def exec(self, inputs):
-        """
-        Execute update posting via Arcade LinkedIn API
-        
-        Args:
-            inputs: Tuple of (user_id, update_params)
-            
-        Returns:
-            Response from LinkedIn API via Arcade
-        """
-        user_id, update_params = inputs
-        
+        user_id, post_params = inputs
         try:
-            logger.info(f"📤 LinkedInPostUpdateNode: Posting update via Arcade")
-            
+            logger.info(f"\ud83d\udc4c LinkedInPostUpdateNode: Posting update via Arcade")
             result = call_arcade_tool(
                 user_id=user_id,
                 platform="linkedin",
                 action="post_update",
-                parameters=update_params
+                parameters=post_params
             )
-            
-            logger.info(f"✅ LinkedInPostUpdateNode: Update posted successfully")
+            from agent.utils.arcade_client import is_authorization_required
+            if is_authorization_required(result):
+                return {"authorization_required": True, **result}
+            logger.info(f"\u2705 LinkedInPostUpdateNode: Update posted successfully")
             return result
-            
         except ArcadeClientError as e:
-            logger.error(f"❌ LinkedInPostUpdateNode: Arcade client error: {e}")
-            raise RuntimeError(f"Failed to post LinkedIn update via Arcade: {e}")
+            from agent.utils.arcade_client import is_authorization_required_exception
+            if is_authorization_required_exception(e):
+                return {"authorization_required": True, "error": str(e), "url": getattr(e, "url", None)}
+            logger.error(f"\u274c LinkedInPostUpdateNode: Arcade client error: {e}")
+            raise RuntimeError(f"Failed to post update via Arcade: {e}")
         except Exception as e:
-            logger.error(f"❌ LinkedInPostUpdateNode: Unexpected error: {e}")
-            raise RuntimeError(f"LinkedIn update posting failed: {e}")
-    
+            logger.error(f"\u274c LinkedInPostUpdateNode: Unexpected error: {e}")
+            raise RuntimeError(f"Update posting failed: {e}")
     def post(self, shared, prep_res, exec_res):
-        """
-        Store update posting result
-        
-        Args:
-            shared: Shared data store
-            prep_res: Result from prep method
-            exec_res: Result from exec method
-        """
-        logger.info("💾 LinkedInPostUpdateNode: Storing update result")
+        from agent.utils.arcade_client import is_authorization_required
+        if is_authorization_required(exec_res):
+            shared["arcade_auth_url"] = exec_res.get("url")
+            shared["arcade_auth_message"] = exec_res.get("message", exec_res.get("error", "Authorization required for LinkedIn."))
+            return "wait_for_authorization"
+        logger.info("\ud83d\udcbe LinkedInPostUpdateNode: Storing update result")
         shared["linkedin_post_result"] = exec_res
         shared["last_linkedin_post"] = {
             "text": prep_res[1]["text"],
-            "visibility": prep_res[1]["visibility"],
             "result": exec_res
         }
         return "default"

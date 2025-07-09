@@ -69,49 +69,38 @@ class XPostTweetNode(Node):
         return user_id, tweet_params
     
     def exec(self, inputs):
-        """
-        Execute tweet posting via Arcade X API
-        
-        Args:
-            inputs: Tuple of (user_id, tweet_params)
-            
-        Returns:
-            Response from X API via Arcade
-        """
         user_id, tweet_params = inputs
-        
         try:
-            logger.info(f"📤 XPostTweetNode: Posting tweet via Arcade")
-            
+            logger.info(f"\ud83d\udc4c XPostTweetNode: Posting tweet via Arcade")
             result = call_arcade_tool(
                 user_id=user_id,
                 platform="x",
                 action="post_tweet",
                 parameters=tweet_params
             )
-            
-            logger.info(f"✅ XPostTweetNode: Tweet posted successfully")
+            from agent.utils.arcade_client import is_authorization_required
+            if is_authorization_required(result):
+                return {"authorization_required": True, **result}
+            logger.info(f"\u2705 XPostTweetNode: Tweet posted successfully")
             return result
-            
         except ArcadeClientError as e:
-            logger.error(f"❌ XPostTweetNode: Arcade client error: {e}")
+            from agent.utils.arcade_client import is_authorization_required_exception
+            if is_authorization_required_exception(e):
+                return {"authorization_required": True, "error": str(e), "url": getattr(e, "url", None)}
+            logger.error(f"\u274c XPostTweetNode: Arcade client error: {e}")
             raise RuntimeError(f"Failed to post tweet via Arcade: {e}")
         except Exception as e:
-            logger.error(f"❌ XPostTweetNode: Unexpected error: {e}")
+            logger.error(f"\u274c XPostTweetNode: Unexpected error: {e}")
             raise RuntimeError(f"Tweet posting failed: {e}")
-    
     def post(self, shared, prep_res, exec_res):
-        """
-        Store tweet posting result
-        
-        Args:
-            shared: Shared data store
-            prep_res: Result from prep method
-            exec_res: Result from exec method
-        """
-        logger.info("💾 XPostTweetNode: Storing tweet result")
+        from agent.utils.arcade_client import is_authorization_required
+        if is_authorization_required(exec_res):
+            shared["arcade_auth_url"] = exec_res.get("url")
+            shared["arcade_auth_message"] = exec_res.get("message", exec_res.get("error", "Authorization required for X/Twitter."))
+            return "wait_for_authorization"
+        logger.info("\ud83d\udcbe XPostTweetNode: Storing tweet result")
         shared["x_post_result"] = exec_res
-        shared["last_tweet"] = {
+        shared["last_x_tweet"] = {
             "text": prep_res[1]["text"],
             "result": exec_res
         }

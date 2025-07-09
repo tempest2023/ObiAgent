@@ -390,8 +390,8 @@ class WorkflowExecutorNode(AsyncNode):
                 # Get node metadata from registry
                 node_metadata = node_registry.get_node(node_name)
                 if not node_metadata:
-                    logger.warning(f"⚠️ WorkflowExecutorNode: No metadata found for {node_name}, returning mock result")
-                    result = f"Mock result for {node_name}"
+                    logger.error(f"❌ WorkflowExecutorNode: No metadata found for {node_name}, cannot proceed.")
+                    raise RuntimeError(f"No metadata found for node: {node_name}")
                 else:
                     # Create node instance using dynamic loader
                     node_instance = node_loader.create_node_instance({
@@ -400,8 +400,8 @@ class WorkflowExecutorNode(AsyncNode):
                     })
                     
                     if node_instance is None:
-                        logger.warning(f"⚠️ WorkflowExecutorNode: Failed to create instance for {node_name}, returning mock result")
-                        result = f"Mock result for {node_name}"
+                        logger.error(f"❌ WorkflowExecutorNode: Failed to create instance for {node_name}, cannot proceed.")
+                        raise RuntimeError(f"Failed to create instance for node: {node_name}")
                     else:
                         # Execute the node
                         prep_res_node = node_instance.prep(shared)

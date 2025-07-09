@@ -71,47 +71,37 @@ class DiscordSendMessageNode(Node):
         return user_id, message_params
     
     def exec(self, inputs):
-        """
-        Execute message sending via Arcade Discord API
-        
-        Args:
-            inputs: Tuple of (user_id, message_params)
-            
-        Returns:
-            Response from Discord API via Arcade
-        """
         user_id, message_params = inputs
-        
         try:
-            logger.info(f"📤 DiscordSendMessageNode: Sending message via Arcade")
-            
+            logger.info(f"\ud83d\udce4 DiscordSendMessageNode: Sending message via Arcade")
             result = call_arcade_tool(
                 user_id=user_id,
                 platform="discord",
                 action="send_message",
                 parameters=message_params
             )
-            
-            logger.info(f"✅ DiscordSendMessageNode: Message sent successfully")
+            from agent.utils.arcade_client import is_authorization_required
+            if is_authorization_required(result):
+                return {"authorization_required": True, **result}
+            logger.info(f"\u2705 DiscordSendMessageNode: Message sent successfully")
             return result
-            
         except ArcadeClientError as e:
-            logger.error(f"❌ DiscordSendMessageNode: Arcade client error: {e}")
+            from agent.utils.arcade_client import is_authorization_required_exception
+            if is_authorization_required_exception(e):
+                return {"authorization_required": True, "error": str(e), "url": getattr(e, "url", None)}
+            logger.error(f"\u274c DiscordSendMessageNode: Arcade client error: {e}")
             raise RuntimeError(f"Failed to send Discord message via Arcade: {e}")
         except Exception as e:
-            logger.error(f"❌ DiscordSendMessageNode: Unexpected error: {e}")
+            logger.error(f"\u274c DiscordSendMessageNode: Unexpected error: {e}")
             raise RuntimeError(f"Discord message sending failed: {e}")
     
     def post(self, shared, prep_res, exec_res):
-        """
-        Store message sending result
-        
-        Args:
-            shared: Shared data store
-            prep_res: Result from prep method
-            exec_res: Result from exec method
-        """
-        logger.info("💾 DiscordSendMessageNode: Storing message result")
+        from agent.utils.arcade_client import is_authorization_required
+        if is_authorization_required(exec_res):
+            shared["arcade_auth_url"] = exec_res.get("url")
+            shared["arcade_auth_message"] = exec_res.get("message", exec_res.get("error", "Authorization required for Discord."))
+            return "wait_for_authorization"
+        logger.info("\ud83d\udcbe DiscordSendMessageNode: Storing message result")
         shared["discord_send_result"] = exec_res
         shared["last_discord_message"] = {
             "channel_id": prep_res[1]["channel_id"],

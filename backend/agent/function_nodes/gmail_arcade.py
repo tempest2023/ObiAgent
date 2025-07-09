@@ -80,7 +80,7 @@ class GmailSendEmailNode(Node):
         user_id, email_params = inputs
         
         try:
-            logger.info(f"📤 GmailSendEmailNode: Sending email via Arcade")
+            logger.info(f"\ud83d\udce4 GmailSendEmailNode: Sending email via Arcade")
             
             # Use Arcade client to send email
             result = call_arcade_tool(
@@ -90,26 +90,35 @@ class GmailSendEmailNode(Node):
                 parameters=email_params
             )
             
-            logger.info(f"✅ GmailSendEmailNode: Email sent successfully")
+            # Check for authorization required in result
+            from agent.utils.arcade_client import is_authorization_required
+            if is_authorization_required(result):
+                return {"authorization_required": True, **result}
+            
+            logger.info(f"\u2705 GmailSendEmailNode: Email sent successfully")
             return result
             
         except ArcadeClientError as e:
-            logger.error(f"❌ GmailSendEmailNode: Arcade client error: {e}")
+            # Check if this is an auth error and provide info for user authorization
+            from agent.utils.arcade_client import is_authorization_required_exception
+            if is_authorization_required_exception(e):
+                return {"authorization_required": True, "error": str(e), "url": getattr(e, "url", None)}
+            logger.error(f"\u274c GmailSendEmailNode: Arcade client error: {e}")
             raise RuntimeError(f"Failed to send email via Arcade: {e}")
         except Exception as e:
-            logger.error(f"❌ GmailSendEmailNode: Unexpected error: {e}")
+            logger.error(f"\u274c GmailSendEmailNode: Unexpected error: {e}")
             raise RuntimeError(f"Email sending failed: {e}")
     
     def post(self, shared, prep_res, exec_res):
         """
-        Store email sending result
-        
-        Args:
-            shared: Shared data store
-            prep_res: Result from prep method
-            exec_res: Result from exec method
+        Store email sending result, or handle authorization required
         """
-        logger.info("💾 GmailSendEmailNode: Storing email result")
+        from agent.utils.arcade_client import is_authorization_required
+        if is_authorization_required(exec_res):
+            shared["arcade_auth_url"] = exec_res.get("url")
+            shared["arcade_auth_message"] = exec_res.get("message", exec_res.get("error", "Authorization required for Gmail."))
+            return "wait_for_authorization"
+        logger.info("\ud83d\udcbe GmailSendEmailNode: Storing email result")
         shared["gmail_send_result"] = exec_res
         shared["last_email_sent"] = {
             "recipient": prep_res[1]["recipient"],
