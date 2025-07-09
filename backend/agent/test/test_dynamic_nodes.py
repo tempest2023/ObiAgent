@@ -56,9 +56,22 @@ def test_node_loader():
     assert node_instance is not None, "Failed to create node instance"
     logger.info(f"✅ Successfully created node instance: {type(node_instance).__name__}")
 
-def test_node_execution():
+def test_node_execution(monkeypatch):
     """Test node execution"""
     logger.info("🧪 Testing Node Execution...")
+    
+    # Mock DDGS to avoid rate limiting issues
+    class MockDDGS:
+        def text(self, query, max_results=None):
+            return [
+                {"title": "Test Result", "body": "Test search result", "href": "https://example.com/test"},
+                {"title": "Another Result", "body": "Another test result", "href": "https://example.com/test2"}
+            ][:max_results]
+    
+    # Patch the DDGS import in web_search module
+    import agent.function_nodes.web_search
+    monkeypatch.setattr(agent.function_nodes.web_search, "DDGS", MockDDGS)
+    
     shared = {"query": "test search query", "num_results": 3}
     web_search_metadata = node_registry.get_node("web_search")
     assert web_search_metadata is not None, "web_search metadata not found"

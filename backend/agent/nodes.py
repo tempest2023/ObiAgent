@@ -23,6 +23,8 @@ from .utils.node_loader import node_loader
 # Configure logging
 logger = logging.getLogger(__name__)
 
+MAX_RETHINKING_ATTEMPTS = 3
+
 class UserResponseRequiredException(Exception):
     """Exception raised when a workflow needs user input to continue"""
     def __init__(self, node_name: str, question: str, node_index: int):
@@ -43,48 +45,109 @@ class WorkflowDesignerNode(AsyncNode):
     
     async def prep_async(self, shared):
         logger.info("🔄 WorkflowDesignerNode: Starting prep_async")
-        
-        # Ensure shared is a dictionary
         if not isinstance(shared, dict):
             shared = {}
             logger.warning("WorkflowDesignerNode: shared parameter is not a dictionary, using empty dict")
-        
+        # 计数器：设计-评审循环次数
+        if "design_review_attempts" not in shared:
+            shared["design_review_attempts"] = 1
+        else:
+            shared["design_review_attempts"] += 1
         user_question = shared.get("user_message", "")
         conversation_history = shared.get("conversation_history", [])
         websocket = shared.get("websocket")
-        
         logger.info(f"📝 WorkflowDesignerNode: Processing question: {user_question[:50]}...")
         logger.info(f"💬 WorkflowDesignerNode: Conversation history length: {len(conversation_history)}")
-        
-        # Get available nodes and similar workflows
         available_nodes = node_registry.to_dict()
         similar_workflows = workflow_store.find_similar_workflows(user_question, limit=3)
-        
         logger.info(f"🔧 WorkflowDesignerNode: Found {len(available_nodes.get('nodes', {}))} available nodes")
         logger.info(f"💾 WorkflowDesignerNode: Found {len(similar_workflows)} similar workflows")
-        
         result = {
             "user_question": user_question,
             "conversation_history": conversation_history,
             "websocket": websocket,
             "available_nodes": available_nodes,
-            "similar_workflows": similar_workflows
+            "similar_workflows": similar_workflows,
+            "shared": shared
         }
-        
-        logger.info("✅ WorkflowDesignerNode: prep_async completed")
+        logger.info(f"✅ WorkflowDesignerNode: prep_async completed (attempt {shared['design_review_attempts']})")
         return result
     
     async def exec_async(self, prep_res):
         logger.info("🔄 WorkflowDesignerNode: Starting exec_async")
-        
         user_question = prep_res["user_question"]
         available_nodes = prep_res["available_nodes"]
         similar_workflows = prep_res["similar_workflows"]
-        
-        logger.info(f"🤖 WorkflowDesignerNode: Calling LLM to design workflow for: {user_question[:50]}...")
-        
-        # Create prompt for workflow design
-        prompt = f"""
+        shared = prep_res.get("shared") or {}
+        # 检查是否有 rethinking_result 且需要 revision
+        rethinking_result = shared.get("rethinking_result") if isinstance(shared, dict) else None
+        needs_revision = False
+        revision_suggestions = None
+        last_workflow_design = None
+        if rethinking_result and rethinking_result.get("needs_revision"):
+            needs_revision = True
+            revision_suggestions = rethinking_result.get("revision_suggestions")
+            last_workflow_design = shared.get("workflow_design")
+        if needs_revision:
+            logger.info("📝 WorkflowDesignerNode: Detected review suggestions, using revision prompt")
+            prompt = f"""
+You are a workflow designer agent. Your task is to redesign a workflow for the user's question, based on the previous workflow and the following review suggestions.
+
+USER QUESTION:
+{user_question}
+
+PREVIOUS WORKFLOW DESIGN:
+{json.dumps(last_workflow_design, indent=2)}
+
+REVIEW SUGGESTIONS:
+{json.dumps(revision_suggestions, indent=2)}
+
+AVAILABLE NODES:
+{json.dumps(available_nodes, indent=2)}
+
+SIMILAR WORKFLOWS (for reference):
+{json.dumps([{
+    'description': w.metadata.description,
+    'nodes_used': w.metadata.nodes_used,
+    'success_rate': w.metadata.success_rate
+} for w in similar_workflows], indent=2)}
+
+Redesign the workflow to address the review suggestions. Return your response in YAML format:
+
+```yaml
+thinking: |
+    <your step-by-step reasoning about how to solve this problem>
+workflow:
+  name: <workflow name>
+  description: <brief description>
+  nodes:
+    - name: <node_name>
+      description: <what this node does>
+      inputs: <list of inputs>
+      outputs: <list of outputs>
+      requires_permission: <true/false>
+    - name: <node_name>
+      ...
+  connections:
+    - from: <node_name>
+      to: <node_name>
+      action: <action_name>
+    - from: <node_name>
+      to: <node_name>
+      action: <action_name>
+  shared_store_schema:
+    <key>: <description>
+    <key>: <description>
+estimated_steps: <number of steps>
+requires_user_input: <true/false>
+requires_permission: <true/false>
+```
+
+IMPORTANT: Use only the available nodes listed above. If you need a node that doesn't exist, use the closest available one or ask for user input.
+"""
+        else:
+            logger.info("📝 WorkflowDesignerNode: No review suggestions, using initial design prompt")
+            prompt = f"""
 You are a workflow designer agent. Your task is to analyze the user's question and design a workflow to solve it.
 
 USER QUESTION: {user_question}
@@ -110,7 +173,6 @@ Return your response in YAML format:
 ```yaml
 thinking: |
     <your step-by-step reasoning about how to solve this problem>
-
 workflow:
   name: <workflow name>
   description: <brief description>
@@ -122,7 +184,6 @@ workflow:
       requires_permission: <true/false>
     - name: <node_name>
       ...
-  
   connections:
     - from: <node_name>
       to: <node_name>
@@ -130,11 +191,9 @@ workflow:
     - from: <node_name>
       to: <node_name>
       action: <action_name>
-  
   shared_store_schema:
     <key>: <description>
     <key>: <description>
-
 estimated_steps: <number of steps>
 requires_user_input: <true/false>
 requires_permission: <true/false>
@@ -142,14 +201,12 @@ requires_permission: <true/false>
 
 IMPORTANT: Use only the available nodes listed above. If you need a node that doesn't exist, use the closest available one or ask for user input.
 """
-        
         # Get workflow design from LLM
         response = call_llm(prompt)
         logger.info("🤖 WorkflowDesignerNode: Received LLM response")
-        
         # Parse YAML response with error handling
         try:
-            yaml_str = response.split("```yaml")[1].split("```")[0].strip()
+            yaml_str = response.split("```yaml")[1].split("```", 1)[0].strip()
             workflow_design = yaml.safe_load(yaml_str)
             logger.info("✅ WorkflowDesignerNode: Successfully parsed YAML response")
         except (IndexError, yaml.YAMLError) as e:
@@ -181,20 +238,16 @@ IMPORTANT: Use only the available nodes listed above. If you need a node that do
                 "requires_permission": False
             }
             logger.info("🔄 WorkflowDesignerNode: Using fallback workflow design")
-        
         logger.info(f"🎯 WorkflowDesignerNode: Designed workflow '{workflow_design.get('workflow', {}).get('name', 'Unknown')}' with {workflow_design.get('estimated_steps', 0)} steps")
         logger.info("✅ WorkflowDesignerNode: exec_async completed")
         return workflow_design
     
     async def post_async(self, shared, prep_res, exec_res):
         logger.info("🔄 WorkflowDesignerNode: Starting post_async")
-        
         # Store the workflow design
         shared["workflow_design"] = exec_res
         shared["current_workflow"] = exec_res
-        
         logger.info(f"💾 WorkflowDesignerNode: Stored workflow design in shared store")
-        
         # Send workflow design to user
         websocket = prep_res["websocket"]
         if websocket:
@@ -208,9 +261,8 @@ IMPORTANT: Use only the available nodes listed above. If you need a node that do
                 logger.error(f"❌ WorkflowDesignerNode: Failed to send workflow design to websocket: {e}")
         else:
             logger.warning("⚠️ WorkflowDesignerNode: No websocket available to send workflow design")
-        
-        logger.info("✅ WorkflowDesignerNode: post_async completed, returning 'execute_workflow'")
-        return "execute_workflow"
+        logger.info("✅ WorkflowDesignerNode: post_async completed, returning 'designed'")
+        return "designed"
 
 class WorkflowExecutorNode(AsyncNode):
     """
@@ -894,4 +946,141 @@ class WorkflowEndNode(AsyncNode):
         
         logger.info("✅ WorkflowEndNode: Marked workflow as complete")
         logger.info("🎉 WorkflowEndNode: Workflow execution finished successfully")
-        return None  # End the flow 
+        return None  # End the flow
+
+class RethinkingWorkflowNode(AsyncNode):
+    """
+    Node that evaluates the designed workflow and suggests improvements if needed.
+    Example:
+        >>> node = RethinkingWorkflowNode()
+        >>> shared = {"workflow_design": {...}, "user_message": "Book a flight...", ...}
+        >>> await node.prep_async(shared)
+        # Prepares evaluation context
+        >>> await node.exec_async(prep_res)
+        # Evaluates workflow and suggests improvements
+    """
+    async def prep_async(self, shared):
+        logger.info("🔄 RethinkingWorkflowNode: Starting prep_async")
+        workflow_design = shared.get("workflow_design")
+        user_message = shared.get("user_message", "")
+        available_nodes = shared.get("available_nodes")
+        similar_workflows = shared.get("similar_workflows")
+        # 计数器：设计-评审循环次数
+        design_review_attempts = shared.get("design_review_attempts", 5)
+        result = {
+            "workflow_design": workflow_design,
+            "user_message": user_message,
+            "available_nodes": available_nodes,
+            "similar_workflows": similar_workflows,
+            "design_review_attempts": design_review_attempts,
+            "shared": shared
+        }
+        logger.info(f"✅ RethinkingWorkflowNode: prep_async completed (attempt {design_review_attempts})")
+        return result
+
+    async def exec_async(self, prep_res):
+        logger.info("🔄 RethinkingWorkflowNode: Starting exec_async")
+        workflow_design = prep_res["workflow_design"]
+        user_message = prep_res["user_message"]
+        available_nodes = prep_res["available_nodes"]
+        similar_workflows = prep_res["similar_workflows"]
+        design_review_attempts = prep_res.get("design_review_attempts", 1)
+        if design_review_attempts > MAX_RETHINKING_ATTEMPTS:
+            logger.warning(f"⚠️ RethinkingWorkflowNode: Exceeded max design-review attempts ({MAX_RETHINKING_ATTEMPTS}), forcing ready_to_execute.")
+            review = {
+                "thinking": f"Exceeded max design-review attempts ({MAX_RETHINKING_ATTEMPTS}), forcing workflow to execute.",
+                "needs_revision": False,
+                "revision_suggestions": ["Max attempts reached, please manually review if needed."],
+                "ready_to_execute": True
+            }
+            logger.info("✅ RethinkingWorkflowNode: exec_async completed (max attempts)")
+            return review
+        prompt = f"""
+You are a workflow reviewer agent. Your job is to critically evaluate the following workflow design for the user's question.
+
+USER QUESTION:
+{user_message}
+
+WORKFLOW DESIGN:
+{json.dumps(workflow_design, indent=2)}
+
+AVAILABLE NODES:
+{json.dumps(available_nodes, indent=2) if available_nodes else 'N/A'}
+
+SIMILAR WORKFLOWS (for reference):
+{json.dumps([{
+    'description': w.metadata.description,
+    'nodes_used': w.metadata.nodes_used,
+    'success_rate': w.metadata.success_rate
+} for w in similar_workflows], indent=2) if similar_workflows else 'N/A'}
+
+Your review must:
+- Be specific and actionable. Do NOT give vague, generic, or irrelevant comments.
+- If revision is needed, provide at least one concrete, step-by-step suggestion in revision_suggestions. Each suggestion must directly address a flaw or gap in the workflow, and be clearly related to the user's question and the workflow design.
+- If the workflow is ready to execute, set needs_revision to false and ready_to_execute to true, and explain why no further improvement is needed.
+- Do NOT output empty, generic, or unrelated suggestions. Do NOT simply say "looks good" or "no issues" unless you have checked every requirement below.
+
+Evaluate the workflow for the following:
+- Does it fully address the user's question?
+- Are there any missing, redundant, or misordered steps?
+- Are all required inputs and outputs covered?
+- Is the workflow as simple as possible?
+- Are there any obvious improvements?
+
+Return your response in YAML format:
+
+```yaml
+thinking: |
+    <your reasoning about the workflow quality>
+needs_revision: <true/false>
+revision_suggestions:
+  - <suggestion 1>
+  - <suggestion 2>
+ready_to_execute: <true/false>
+```
+
+IMPORTANT: If needs_revision is true, revision_suggestions MUST be specific, actionable, and directly related to the user's question and the workflow design. Do NOT output empty, generic, or unrelated suggestions.
+"""
+        response = call_llm(prompt)
+        try:
+            yaml_str = response.split("```yaml")[1].split("```", 1)[0].strip()
+            review = yaml.safe_load(yaml_str)
+            logger.info("✅ RethinkingWorkflowNode: Successfully parsed YAML response")
+        except (IndexError, yaml.YAMLError) as e:
+            logger.error(f"❌ RethinkingWorkflowNode: Failed to parse YAML response: {e}")
+            logger.error(f"📄 RethinkingWorkflowNode: Raw response: {response}")
+            review = {
+                "thinking": "Failed to parse LLM response, assuming revision needed.",
+                "needs_revision": True,
+                "revision_suggestions": ["Please check the workflow design manually."],
+                "ready_to_execute": False
+            }
+        logger.info(f"🎯 RethinkingWorkflowNode: needs_revision={review.get('needs_revision')}, ready_to_execute={review.get('ready_to_execute')}")
+        logger.info("✅ RethinkingWorkflowNode: exec_async completed")
+        return review
+
+    async def post_async(self, shared, prep_res, exec_res):
+        logger.info("🔄 RethinkingWorkflowNode: Starting post_async")
+        shared["rethinking_result"] = exec_res
+        # 新增：通过 websocket 发送 review 结果到前端
+        websocket = None
+        # 尝试从 prep_res 或 shared 获取 websocket
+        if isinstance(prep_res, dict) and "websocket" in prep_res:
+            websocket = prep_res["websocket"]
+        elif "websocket" in shared:
+            websocket = shared["websocket"]
+        if websocket:
+            try:
+                await websocket.send_text(json.dumps({
+                    "type": "workflow_review",
+                    "content": exec_res
+                }))
+                logger.info("📤 RethinkingWorkflowNode: Sent workflow review to websocket")
+            except Exception as e:
+                logger.error(f"❌ RethinkingWorkflowNode: Failed to send workflow review to websocket: {e}")
+        if exec_res.get("needs_revision"):
+            logger.info("🔁 RethinkingWorkflowNode: Workflow needs revision, returning 'needs_revision'")
+            return "needs_revision"
+        else:
+            logger.info("✅ RethinkingWorkflowNode: Workflow ready to execute, returning 'ready_to_execute'")
+            return "ready_to_execute" 

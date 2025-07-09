@@ -5,7 +5,8 @@ from .nodes import (
     UserInteractionNode, 
     WorkflowOptimizerNode,
     StreamingChatNode,
-    WorkflowEndNode
+    WorkflowEndNode,
+    RethinkingWorkflowNode
 )
 
 def create_streaming_chat_flow():
@@ -23,13 +24,16 @@ def create_general_agent_flow():
     """
     # Create nodes
     designer = WorkflowDesignerNode()
+    rethinking = RethinkingWorkflowNode()
     executor = WorkflowExecutorNode()
     interaction = UserInteractionNode()
     optimizer = WorkflowOptimizerNode()
     end_node = WorkflowEndNode()
     
     # Connect the workflow design flow
-    designer - "execute_workflow" >> executor
+    designer - "designed" >> rethinking
+    rethinking - "needs_revision" >> designer
+    rethinking - "ready_to_execute" >> executor
     executor - "workflow_complete" >> optimizer
     executor - "wait_for_response" >> interaction
     executor - "wait_for_permission" >> interaction
@@ -50,10 +54,13 @@ def create_simple_agent_flow():
     Create a simpler agent flow for basic questions
     """
     designer = WorkflowDesignerNode()
+    rethinking = RethinkingWorkflowNode()
     executor = WorkflowExecutorNode()
     end_node = WorkflowEndNode()
     
-    designer - "execute_workflow" >> executor
+    designer - "designed" >> rethinking
+    rethinking - "needs_revision" >> designer
+    rethinking - "ready_to_execute" >> executor
     executor - "workflow_complete" >> end_node
     
     return AsyncFlow(start=designer) 

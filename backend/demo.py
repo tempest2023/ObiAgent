@@ -138,40 +138,6 @@ class DemoSharedStore(dict):
         except KeyError:
             return default
 
-async def demo_flight_booking():
-    print("🚀 DEMO: Flight Booking Workflow with User Interaction")
-    print("=" * 60)
-    
-    websocket = DemoWebSocket()
-    shared_store = DemoSharedStore(
-        websocket, 
-        "Help book a flight ticket from Los Angeles to Shanghai with high cost performance, preferably departing in the afternoon."
-    )
-    
-    print(f"📝 Question: {shared_store.user_message}")
-    
-    # Create a custom flow that can handle user interactions
-    flow = create_general_agent_flow()
-    
-    try:
-        # Run the flow with custom handling for user questions
-        await flow.run_async(shared_store)
-        print("\n✅ Workflow completed!")
-        
-        # Show final results
-        if hasattr(shared_store, 'workflow_results'):
-            print("\n📊 Final Results:")
-            for node, result in shared_store.workflow_results.items():
-                if isinstance(result, dict):
-                    print(f"  {node}: {list(result.keys())}")
-                else:
-                    print(f"  {node}: {str(result)[:100]}...")
-                    
-    except Exception as e:
-        print(f"\n❌ Failed: {e}")
-        import traceback
-        traceback.print_exc()
-
 async def main():
     print("🎭 PocketFlow General Agent System Demo")
     print("=" * 50)
@@ -183,8 +149,6 @@ async def main():
     stats = workflow_store.get_statistics()
     print(f"💾 Stored Workflows: {stats['total_workflows']}")
     
-    # Run demo
-    await demo_flight_booking()
     
     print("\n🎉 Demo completed!")
     print("To run interactive version: python server.py")

@@ -19,44 +19,6 @@
       "module_path": "agent.function_nodes.web_search",
       "class_name": "WebSearchNode"
     },
-    "analyze_results": {
-      "name": "analyze_results",
-      "description": "Analyze search results and extract relevant information",
-      "category": "analysis",
-      "permission_level": "none",
-      "inputs": ["search_results", "analysis_criteria"],
-      "outputs": ["analysis_result"],
-      "examples": [
-        {
-          "search_results": "web_search_results",
-          "analysis_criteria": "flight prices and schedules",
-          "output": "Structured analysis of flight options"
-        }
-      ],
-      "estimated_cost": 0.02,
-      "estimated_time": 5,
-      "module_path": "agent.function_nodes.analyze_results",
-      "class_name": "AnalyzeResultsNode"
-    },
-    "cost_analysis": {
-      "name": "cost_analysis",
-      "description": "Analyze costs and find best value options",
-      "category": "analysis",
-      "permission_level": "none",
-      "inputs": ["options", "criteria"],
-      "outputs": ["analysis_result"],
-      "examples": [
-        {
-          "options": "flight_options",
-          "criteria": "cost_performance",
-          "output": "Cost analysis with recommendations"
-        }
-      ],
-      "estimated_cost": 0.02,
-      "estimated_time": 3,
-      "module_path": "agent.function_nodes.cost_analysis",
-      "class_name": "CostAnalysisNode"
-    },
     "result_summarizer": {
       "name": "result_summarizer",
       "description": "Summarize results and provide recommendations",
@@ -96,16 +58,22 @@
     },
     "permission_request": {
       "name": "permission_request",
-      "description": "Request user permission for sensitive operations",
+      "description": "Request user permission for sensitive operations (e.g., payment, booking, data access, external API, etc.)",
       "category": "communication",
       "permission_level": "none",
-      "inputs": ["operation", "details"],
+      "inputs": ["operation", "details", "permission_type"],
       "outputs": ["permission_granted"],
       "examples": [
         {
           "operation": "payment",
           "details": "Book flight for $850 using saved payment method",
-          "output": "User's permission decision"
+          "output": "User's permission decision (inferred type: payment)"
+        },
+        {
+          "operation": "access database",
+          "details": "Read user table",
+          "permission_type": "data_access",
+          "output": "User's permission decision (explicit type: data_access)"
         }
       ],
       "estimated_cost": 0.0,
@@ -625,6 +593,106 @@
       "estimated_time": 30,
       "module_path": "agent.function_nodes.discord_arcade",
       "class_name": "DiscordAuthNode"
+    },
+    "research_query_decomposer": {
+      "name": "research_query_decomposer",
+      "description": "Decompose complex research questions into manageable sub-questions with search strategies and priorities",
+      "category": "analysis",
+      "permission_level": "none",
+      "inputs": ["research_question", "research_depth", "research_context"],
+      "outputs": ["research_decomposition"],
+      "examples": [
+        {
+          "research_question": "How is artificial intelligence transforming healthcare?",
+          "research_depth": "comprehensive",
+          "research_context": "medical_technology",
+          "output": "Structured decomposition with 8-12 sub-questions, search strategies, and research plan"
+        }
+      ],
+      "estimated_cost": 0.03,
+      "estimated_time": 8,
+      "module_path": "agent.function_nodes.research_query_decomposer",
+      "class_name": "ResearchQueryDecomposerNode"
+    },
+    "multi_source_information_gatherer": {
+      "name": "multi_source_information_gatherer",
+      "description": "Gather and analyze information from multiple sources for research sub-questions with credibility assessment",
+      "category": "analysis",
+      "permission_level": "none",
+      "inputs": ["current_sub_question", "search_results", "research_context"],
+      "outputs": ["information_gathered"],
+      "examples": [
+        {
+          "current_sub_question": "What are the current applications of AI in medical diagnosis?",
+          "search_results": "web_search_results",
+          "research_context": "healthcare_research",
+          "output": "Structured information with key findings, data points, expert opinions, and source analysis"
+        }
+      ],
+      "estimated_cost": 0.04,
+      "estimated_time": 10,
+      "module_path": "agent.function_nodes.multi_source_information_gatherer",
+      "class_name": "MultiSourceInformationGathererNode"
+    },
+    "information_synthesizer": {
+      "name": "information_synthesizer",
+      "description": "Synthesize information from multiple research findings into coherent insights and identify patterns",
+      "category": "analysis",
+      "permission_level": "none",
+      "inputs": ["research_findings", "research_scope", "main_question"],
+      "outputs": ["research_synthesis"],
+      "examples": [
+        {
+          "research_findings": "collected_research_data",
+          "research_scope": "research_parameters",
+          "main_question": "How is AI transforming healthcare?",
+          "output": "Comprehensive synthesis with key insights, thematic analysis, conclusions, and gap identification"
+        }
+      ],
+      "estimated_cost": 0.05,
+      "estimated_time": 12,
+      "module_path": "agent.function_nodes.information_synthesizer",
+      "class_name": "InformationSynthesizerNode"
+    },
+    "citation_manager": {
+      "name": "citation_manager",
+      "description": "Create proper academic citations and manage source attribution for research findings",
+      "category": "creation",
+      "permission_level": "none",
+      "inputs": ["research_findings", "search_results", "citation_style"],
+      "outputs": ["citations"],
+      "examples": [
+        {
+          "research_findings": "research_data_with_sources",
+          "search_results": "source_references",
+          "citation_style": "apa",
+          "output": "Comprehensive citation database with proper formatting, credibility assessment, and bibliography"
+        }
+      ],
+      "estimated_cost": 0.03,
+      "estimated_time": 8,
+      "module_path": "agent.function_nodes.citation_manager",
+      "class_name": "CitationManagerNode"
+    },
+    "research_report_generator": {
+      "name": "research_report_generator",
+      "description": "Generate structured research reports from synthesized findings with proper citations and formatting",
+      "category": "creation",
+      "permission_level": "none",
+      "inputs": ["research_synthesis", "citations", "report_config"],
+      "outputs": ["research_report"],
+      "examples": [
+        {
+          "research_synthesis": "synthesized_research_findings",
+          "citations": "citation_database",
+          "report_config": "comprehensive_academic_report",
+          "output": "Professional research report with executive summary, detailed sections, citations, and recommendations"
+        }
+      ],
+      "estimated_cost": 0.06,
+      "estimated_time": 15,
+      "module_path": "agent.function_nodes.research_report_generator",
+      "class_name": "ResearchReportGeneratorNode"
     }
   }
 } 
