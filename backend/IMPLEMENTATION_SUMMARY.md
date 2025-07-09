@@ -89,10 +89,6 @@ python test_agent.py
    workflow:
      name: Flight Booking Workflow
      nodes:
-       - name: flight_search
-         description: Search for flight options
-       - name: cost_analysis
-         description: Analyze costs and find best value
        - name: result_summarizer
          description: Present recommendations
    ```
