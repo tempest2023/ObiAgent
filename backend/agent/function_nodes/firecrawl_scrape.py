@@ -1,8 +1,9 @@
 import logging
 import os
-import requests
+import json
 from pocketflow import Node
 from typing import Dict, Any
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,17 @@ class FirecrawlScrapeNode(Node):
         payload = {"url": url}
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         try:
-            response = requests.post(endpoint, json=payload, headers=headers, timeout=30)
+            response = httpx.post(endpoint, json=payload, headers=headers, timeout=30)
             response.raise_for_status()
             data = response.json()
             logger.info(f"✅ FirecrawlScrapeNode: Scrape successful, keys: {list(data.keys())}")
             return data
+        except httpx.HTTPStatusError as e:
+            logger.error(f"❌ FirecrawlScrapeNode: HTTP error: {e.response.status_code} - {e.response.text}")
+            return {"error": f"HTTP error: {e.response.status_code} - {e.response.text}"}
+        except httpx.RequestError as e:
+            logger.error(f"❌ FirecrawlScrapeNode: Request error: {e}")
+            return {"error": f"Request error: {e}"}
         except Exception as e:
             logger.error(f"❌ FirecrawlScrapeNode: Scrape failed: {e}")
             return {"error": str(e)}

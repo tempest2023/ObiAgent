@@ -119,6 +119,481 @@
       "module_path": "agent.function_nodes.firecrawl_scrape",
       "class_name": "FirecrawlScrapeNode"
     },
+    "gmail_send_email": {
+      "name": "gmail_send_email",
+      "description": "Send emails via Gmail using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "recipient", "subject", "body", "cc", "bcc", "attachments"],
+      "outputs": ["gmail_send_result"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "recipient": "example@gmail.com",
+          "subject": "Meeting Update",
+          "body": "The meeting has been rescheduled",
+          "output": "Email sent successfully"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 5,
+      "module_path": "agent.function_nodes.gmail_arcade",
+      "class_name": "GmailSendEmailNode"
+    },
+    "gmail_read_emails": {
+      "name": "gmail_read_emails",
+      "description": "Read emails from Gmail using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "max_results", "unread_only", "label"],
+      "outputs": ["gmail_emails"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "max_results": 10,
+          "unread_only": true,
+          "output": "List of recent emails"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.gmail_arcade",
+      "class_name": "GmailReadEmailsNode"
+    },
+    "gmail_search_emails": {
+      "name": "gmail_search_emails",
+      "description": "Search emails in Gmail using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "search_query", "max_results"],
+      "outputs": ["gmail_search_results"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "search_query": "from:boss@company.com subject:urgent",
+          "max_results": 20,
+          "output": "Matching emails"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 4,
+      "module_path": "agent.function_nodes.gmail_arcade",
+      "class_name": "GmailSearchEmailsNode"
+    },
+    "gmail_auth": {
+      "name": "gmail_auth",
+      "description": "Authenticate with Gmail via Arcade",
+      "category": "utility",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "scopes"],
+      "outputs": ["gmail_auth_status"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "scopes": ["gmail.send", "gmail.readonly"],
+          "output": "Authentication successful"
+        }
+      ],
+      "estimated_cost": 0.0,
+      "estimated_time": 30,
+      "module_path": "agent.function_nodes.gmail_arcade",
+      "class_name": "GmailAuthNode"
+    },
+    "slack_send_message": {
+      "name": "slack_send_message",
+      "description": "Send messages to Slack channels using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "channel", "message", "thread_ts"],
+      "outputs": ["slack_send_result"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "channel": "#general",
+          "message": "Hello team! 👋",
+          "output": "Message sent successfully"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.slack_arcade",
+      "class_name": "SlackSendMessageNode"
+    },
+    "slack_get_channels": {
+      "name": "slack_get_channels",
+      "description": "Get list of Slack channels using Arcade API",
+      "category": "communication",
+      "permission_level": "basic",
+      "inputs": ["user_id", "types", "exclude_archived"],
+      "outputs": ["slack_channels"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "types": ["public_channel", "private_channel"],
+          "output": "List of available channels"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 2,
+      "module_path": "agent.function_nodes.slack_arcade",
+      "class_name": "SlackGetChannelsNode"
+    },
+    "slack_get_messages": {
+      "name": "slack_get_messages",
+      "description": "Get messages from Slack channels using Arcade API",
+      "category": "communication",
+      "permission_level": "basic",
+      "inputs": ["user_id", "channel", "count", "latest"],
+      "outputs": ["slack_messages"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "channel": "#general",
+          "count": 50,
+          "output": "Recent channel messages"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.slack_arcade",
+      "class_name": "SlackGetMessagesNode"
+    },
+    "slack_upload_file": {
+      "name": "slack_upload_file",
+      "description": "Upload files to Slack using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "file_path", "channels", "title", "initial_comment"],
+      "outputs": ["slack_upload_result"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "file_path": "/path/to/file.pdf",
+          "channels": ["#general"],
+          "title": "Project Report",
+          "output": "File uploaded successfully"
+        }
+      ],
+      "estimated_cost": 0.02,
+      "estimated_time": 8,
+      "module_path": "agent.function_nodes.slack_arcade",
+      "class_name": "SlackUploadFileNode"
+    },
+    "slack_auth": {
+      "name": "slack_auth",
+      "description": "Authenticate with Slack via Arcade",
+      "category": "utility",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "scopes"],
+      "outputs": ["slack_auth_status"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "scopes": ["chat:write", "channels:read"],
+          "output": "Authentication successful"
+        }
+      ],
+      "estimated_cost": 0.0,
+      "estimated_time": 30,
+      "module_path": "agent.function_nodes.slack_arcade",
+      "class_name": "SlackAuthNode"
+    },
+    "x_post_tweet": {
+      "name": "x_post_tweet",
+      "description": "Post tweets to X using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "text", "reply_to", "media_ids"],
+      "outputs": ["x_post_result"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "text": "Hello world! 🌍 #FirstTweet",
+          "output": "Tweet posted successfully"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.x_arcade",
+      "class_name": "XPostTweetNode"
+    },
+    "x_get_tweets": {
+      "name": "x_get_tweets",
+      "description": "Get tweets from X using Arcade API",
+      "category": "communication",
+      "permission_level": "basic",
+      "inputs": ["user_id", "timeline_type", "count", "include_replies"],
+      "outputs": ["x_tweets"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "timeline_type": "home",
+          "count": 20,
+          "output": "Recent tweets from timeline"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.x_arcade",
+      "class_name": "XGetTweetsNode"
+    },
+    "x_get_user_profile": {
+      "name": "x_get_user_profile",
+      "description": "Get user profile from X using Arcade API",
+      "category": "communication",
+      "permission_level": "basic",
+      "inputs": ["user_id", "target_username", "include_entities"],
+      "outputs": ["x_user_profile"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "target_username": "elonmusk",
+          "output": "User profile information"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 2,
+      "module_path": "agent.function_nodes.x_arcade",
+      "class_name": "XGetUserProfileNode"
+    },
+    "x_like_tweet": {
+      "name": "x_like_tweet",
+      "description": "Like/unlike tweets on X using Arcade API",
+      "category": "communication",
+      "permission_level": "basic",
+      "inputs": ["user_id", "tweet_id", "action"],
+      "outputs": ["x_like_result"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "tweet_id": "1234567890123456789",
+          "action": "like",
+          "output": "Tweet liked successfully"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 2,
+      "module_path": "agent.function_nodes.x_arcade",
+      "class_name": "XLikeTweetNode"
+    },
+    "x_auth": {
+      "name": "x_auth",
+      "description": "Authenticate with X via Arcade",
+      "category": "utility",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "scopes"],
+      "outputs": ["x_auth_status"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "scopes": ["tweet.write", "users.read"],
+          "output": "Authentication successful"
+        }
+      ],
+      "estimated_cost": 0.0,
+      "estimated_time": 30,
+      "module_path": "agent.function_nodes.x_arcade",
+      "class_name": "XAuthNode"
+    },
+    "linkedin_post_update": {
+      "name": "linkedin_post_update",
+      "description": "Post updates to LinkedIn using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "text", "visibility", "media_url"],
+      "outputs": ["linkedin_post_result"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "text": "Excited to share my latest project! 🚀",
+          "visibility": "PUBLIC",
+          "output": "LinkedIn post created successfully"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.linkedin_arcade",
+      "class_name": "LinkedInPostUpdateNode"
+    },
+    "linkedin_get_profile": {
+      "name": "linkedin_get_profile",
+      "description": "Get LinkedIn profile using Arcade API",
+      "category": "communication",
+      "permission_level": "basic",
+      "inputs": ["user_id", "profile_id", "fields"],
+      "outputs": ["linkedin_profile"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "profile_id": null,
+          "fields": ["firstName", "lastName", "headline"],
+          "output": "User profile information"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 2,
+      "module_path": "agent.function_nodes.linkedin_arcade",
+      "class_name": "LinkedInGetProfileNode"
+    },
+    "linkedin_send_message": {
+      "name": "linkedin_send_message",
+      "description": "Send messages on LinkedIn using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "recipient_id", "message", "subject"],
+      "outputs": ["linkedin_message_result"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "recipient_id": "connection123",
+          "message": "Hi! I'd love to connect about your recent post.",
+          "output": "Message sent successfully"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.linkedin_arcade",
+      "class_name": "LinkedInSendMessageNode"
+    },
+    "linkedin_get_connections": {
+      "name": "linkedin_get_connections",
+      "description": "Get LinkedIn connections using Arcade API",
+      "category": "communication",
+      "permission_level": "basic",
+      "inputs": ["user_id", "start", "count", "fields"],
+      "outputs": ["linkedin_connections"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "start": 0,
+          "count": 50,
+          "output": "List of LinkedIn connections"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.linkedin_arcade",
+      "class_name": "LinkedInGetConnectionsNode"
+    },
+    "linkedin_auth": {
+      "name": "linkedin_auth",
+      "description": "Authenticate with LinkedIn via Arcade",
+      "category": "utility",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "scopes"],
+      "outputs": ["linkedin_auth_status"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "scopes": ["r_liteprofile", "w_member_social"],
+          "output": "Authentication successful"
+        }
+      ],
+      "estimated_cost": 0.0,
+      "estimated_time": 30,
+      "module_path": "agent.function_nodes.linkedin_arcade",
+      "class_name": "LinkedInAuthNode"
+    },
+    "discord_send_message": {
+      "name": "discord_send_message",
+      "description": "Send messages to Discord channels using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "channel_id", "message", "embed"],
+      "outputs": ["discord_send_result"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "channel_id": "1234567890123456789",
+          "message": "Hello Discord! 🎮",
+          "output": "Message sent successfully"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.discord_arcade",
+      "class_name": "DiscordSendMessageNode"
+    },
+    "discord_get_channels": {
+      "name": "discord_get_channels",
+      "description": "Get Discord channels using Arcade API",
+      "category": "communication",
+      "permission_level": "basic",
+      "inputs": ["user_id", "guild_id", "channel_types"],
+      "outputs": ["discord_channels"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "guild_id": "1234567890123456789",
+          "channel_types": ["text", "voice"],
+          "output": "List of server channels"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 2,
+      "module_path": "agent.function_nodes.discord_arcade",
+      "class_name": "DiscordGetChannelsNode"
+    },
+    "discord_get_messages": {
+      "name": "discord_get_messages",
+      "description": "Get messages from Discord channels using Arcade API",
+      "category": "communication",
+      "permission_level": "basic",
+      "inputs": ["user_id", "channel_id", "limit", "before"],
+      "outputs": ["discord_messages"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "channel_id": "1234567890123456789",
+          "limit": 50,
+          "output": "Recent channel messages"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.discord_arcade",
+      "class_name": "DiscordGetMessagesNode"
+    },
+    "discord_create_channel": {
+      "name": "discord_create_channel",
+      "description": "Create Discord channels using Arcade API",
+      "category": "communication",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "guild_id", "name", "type"],
+      "outputs": ["discord_create_channel_result"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "guild_id": "1234567890123456789",
+          "name": "new-channel",
+          "type": "text",
+          "output": "Channel created successfully"
+        }
+      ],
+      "estimated_cost": 0.01,
+      "estimated_time": 3,
+      "module_path": "agent.function_nodes.discord_arcade",
+      "class_name": "DiscordCreateChannelNode"
+    },
+    "discord_auth": {
+      "name": "discord_auth",
+      "description": "Authenticate with Discord via Arcade",
+      "category": "utility",
+      "permission_level": "sensitive",
+      "inputs": ["user_id", "scopes"],
+      "outputs": ["discord_auth_status"],
+      "examples": [
+        {
+          "user_id": "user123",
+          "scopes": ["bot", "messages.read", "messages.write"],
+          "output": "Authentication successful"
+        }
+      ],
+      "estimated_cost": 0.0,
+      "estimated_time": 30,
+      "module_path": "agent.function_nodes.discord_arcade",
+      "class_name": "DiscordAuthNode"
+    },
     "research_query_decomposer": {
       "name": "research_query_decomposer",
       "description": "Decompose complex research questions into manageable sub-questions with search strategies and priorities",
