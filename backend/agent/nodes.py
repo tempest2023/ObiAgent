@@ -33,6 +33,17 @@ class UserResponseRequiredException(Exception):
         self.node_index = node_index
         super().__init__(f"User response required for node {node_name} at index {node_index}")
 
+# --- Utility: Format node list for prompt injection ---
+def format_node_list_for_prompt(node_dict):
+    """Format node names and descriptions for LLM prompt injection."""
+    nodes = node_dict.get("nodes", {})
+    lines = []
+    for node in nodes.values():
+        name = node.get("name")
+        desc = node.get("description", "")
+        lines.append(f"- {name}: {desc}")
+    return "\n".join(lines)
+
 class WorkflowDesignerNode(AsyncNode):
     """
     Node that analyzes user questions and designs workflows.
@@ -79,6 +90,7 @@ class WorkflowDesignerNode(AsyncNode):
         available_nodes = prep_res["available_nodes"]
         similar_workflows = prep_res["similar_workflows"]
         shared = prep_res.get("shared") or {}
+        node_list_str = format_node_list_for_prompt(available_nodes)
         # 检查是否有 rethinking_result 且需要 revision
         rethinking_result = shared.get("rethinking_result") if isinstance(shared, dict) else None
         needs_revision = False
@@ -102,8 +114,8 @@ PREVIOUS WORKFLOW DESIGN:
 REVIEW SUGGESTIONS:
 {json.dumps(revision_suggestions, indent=2)}
 
-AVAILABLE NODES:
-{json.dumps(available_nodes, indent=2)}
+AVAILABLE FUNCTION NODES (use only these):
+{node_list_str}
 
 SIMILAR WORKFLOWS (for reference):
 {json.dumps([{
@@ -143,7 +155,7 @@ requires_user_input: <true/false>
 requires_permission: <true/false>
 ```
 
-IMPORTANT: Use only the available nodes listed above. If you need a node that doesn't exist, use the closest available one or ask for user input.
+IMPORTANT: You must only use node names from the available function node list above. If you need a node that doesn't exist, use the closest available one or ask for user input.
 """
         else:
             logger.info("📝 WorkflowDesignerNode: No review suggestions, using initial design prompt")
@@ -152,8 +164,8 @@ You are a workflow designer agent. Your task is to analyze the user's question a
 
 USER QUESTION: {user_question}
 
-AVAILABLE NODES:
-{json.dumps(available_nodes, indent=2)}
+AVAILABLE FUNCTION NODES (use only these):
+{node_list_str}
 
 SIMILAR WORKFLOWS (for reference):
 {json.dumps([{
@@ -199,7 +211,7 @@ requires_user_input: <true/false>
 requires_permission: <true/false>
 ```
 
-IMPORTANT: Use only the available nodes listed above. If you need a node that doesn't exist, use the closest available one or ask for user input.
+IMPORTANT: You must only use node names from the available function node list above. If you need a node that doesn't exist, use the closest available one or ask for user input.
 """
         # Get workflow design from LLM
         response = call_llm(prompt)
@@ -985,6 +997,7 @@ class RethinkingWorkflowNode(AsyncNode):
         available_nodes = prep_res["available_nodes"]
         similar_workflows = prep_res["similar_workflows"]
         design_review_attempts = prep_res.get("design_review_attempts", 1)
+        node_list_str = format_node_list_for_prompt(available_nodes) if available_nodes else "N/A"
         if design_review_attempts > MAX_RETHINKING_ATTEMPTS:
             logger.warning(f"⚠️ RethinkingWorkflowNode: Exceeded max design-review attempts ({MAX_RETHINKING_ATTEMPTS}), forcing ready_to_execute.")
             review = {
@@ -1004,8 +1017,8 @@ USER QUESTION:
 WORKFLOW DESIGN:
 {json.dumps(workflow_design, indent=2)}
 
-AVAILABLE NODES:
-{json.dumps(available_nodes, indent=2) if available_nodes else 'N/A'}
+AVAILABLE FUNCTION NODES (use only these):
+{node_list_str}
 
 SIMILAR WORKFLOWS (for reference):
 {json.dumps([{
@@ -1019,6 +1032,7 @@ Your review must:
 - If revision is needed, provide at least one concrete, step-by-step suggestion in revision_suggestions. Each suggestion must directly address a flaw or gap in the workflow, and be clearly related to the user's question and the workflow design.
 - If the workflow is ready to execute, set needs_revision to false and ready_to_execute to true, and explain why no further improvement is needed.
 - Do NOT output empty, generic, or unrelated suggestions. Do NOT simply say "looks good" or "no issues" unless you have checked every requirement below.
+- If any node in the workflow is not in the available function node list, suggest the closest valid node or ask for clarification.
 
 Evaluate the workflow for the following:
 - Does it fully address the user's question?
@@ -1039,7 +1053,7 @@ revision_suggestions:
 ready_to_execute: <true/false>
 ```
 
-IMPORTANT: If needs_revision is true, revision_suggestions MUST be specific, actionable, and directly related to the user's question and the workflow design. Do NOT output empty, generic, or unrelated suggestions.
+IMPORTANT: If needs_revision is true, revision_suggestions MUST be specific, actionable, and directly related to the user's question and the workflow design. Do NOT output empty, generic, or unrelated suggestions. If any node in the workflow is not in the available function node list, suggest the closest valid node or ask for clarification.
 """
         response = call_llm(prompt)
         try:
@@ -1084,3 +1098,11 @@ IMPORTANT: If needs_revision is true, revision_suggestions MUST be specific, act
         else:
             logger.info("✅ RethinkingWorkflowNode: Workflow ready to execute, returning 'ready_to_execute'")
             return "ready_to_execute" 
+
+# --- (Optional) Code-level validation for node names before execution ---
+def validate_workflow_node_names(workflow_design, available_nodes):
+    """Check that all node names in the workflow exist in the available node list."""
+    node_list = set(n.get("name") for n in available_nodes.get("nodes", {}).values())
+    workflow_nodes = workflow_design.get("workflow", {}).get("nodes", [])
+    invalid = [n["name"] for n in workflow_nodes if n["name"] not in node_list]
+    return invalid 
